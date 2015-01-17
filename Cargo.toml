@@ -6,7 +6,7 @@ authors = ["Fenhl <fenhl@fenhl.net>"]
 
 [[bin]]
 name = "hematite_server"
-path = "src/main.rs"
+path = "server/main.rs"
 
 [lib]
 name = "hematite_server"
