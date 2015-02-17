@@ -12,8 +12,8 @@ pub struct VarInt;
 impl Protocol for VarInt {
     type Clean = i32;
     /// Size in bytes of `value` as a VarInt
-    fn proto_len(value: i32) -> usize {
-        let value = value as u32;
+    fn proto_len(value: &i32) -> usize {
+        let value = *value as u32;
         if (value & (0xffffffffu32 <<  7)) == 0 { return 1; }
         if (value & (0xffffffffu32 << 14)) == 0 { return 2; }
         if (value & (0xffffffffu32 << 21)) == 0 { return 3; }
@@ -58,8 +58,8 @@ pub struct VarLong;
 impl Protocol for VarLong {
     type Clean = i64;
     /// Size in bytes of `value` as a VarLong
-    fn proto_len(value: i64) -> usize {
-        let value = value as u64;
+    fn proto_len(value: &i64) -> usize {
+        let value = *value as u64;
         if (value & (0xffffffffffffffffu64 <<  7)) == 0 { return 1; }
         if (value & (0xffffffffffffffffu64 << 14)) == 0 { return 2; }
         if (value & (0xffffffffffffffffu64 << 21)) == 0 { return 3; }
