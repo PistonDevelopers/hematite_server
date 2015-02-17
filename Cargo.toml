@@ -1,8 +1,11 @@
 [package]
 
 name = "hematite_server"
-version = "0.0.0"
-authors = ["Fenhl <fenhl@fenhl.net>"]
+version = "0.0.1"
+authors = [
+    "Fenhl <fenhl@fenhl.net>",
+    "Carlos Cobo <toqueteos@gmail.com>"
+]
 
 [[bin]]
 name = "hematite_server"
