@@ -1,0 +1,3 @@
+language: rust
+notifications:
+  irc: "irc.mozilla.org#hematite"
