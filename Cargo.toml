@@ -14,3 +14,6 @@ path = "server/main.rs"
 [lib]
 name = "hematite_server"
 path = "src/lib.rs"
+
+[dependencies]
+uuid = "*"
