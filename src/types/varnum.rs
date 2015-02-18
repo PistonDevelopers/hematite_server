@@ -170,7 +170,7 @@ mod tests {
         let tests = varint_tests();
         for test in tests.iter() {
             let mut r = MemReader::new(test.bytes.clone());
-            let value = <VarInt as Protocol>::proto_decode(&mut r, 0).unwrap();
+            let value = <VarInt as Protocol>::proto_decode(&mut r).unwrap();
             assert_eq!(test.value, value);
         }
     }
@@ -190,7 +190,7 @@ mod tests {
         let tests = varlong_tests();
         for test in tests.iter() {
             let mut r = MemReader::new(test.bytes.clone());
-            let value = <VarLong as Protocol>::proto_decode(&mut r, 0).unwrap();
+            let value = <VarLong as Protocol>::proto_decode(&mut r).unwrap();
             assert_eq!(test.value, value);
         }
     }
