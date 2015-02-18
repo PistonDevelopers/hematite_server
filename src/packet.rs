@@ -8,9 +8,10 @@ use uuid::Uuid;
 
 pub trait Protocol {
     type Clean = Self;
+
     fn proto_len(value: &Self::Clean) -> usize;
     fn proto_encode(value: Self::Clean, dst: &mut Writer) -> IoResult<()>;
-    fn proto_decode(src: &mut Reader, plen: usize) -> IoResult<Self::Clean>;
+    fn proto_decode(src: &mut Reader) -> IoResult<Self::Clean>;
 }
 
 macro_rules! packet {
@@ -26,6 +27,7 @@ macro_rules! packet {
             fn proto_len(value: &$name) -> usize {
                 0 $(+ <$fty as Protocol>::proto_len(&value.$fname) as usize)*
             }
+
             fn proto_encode(value: $name, dst: &mut Writer) -> IoResult<()> {
                 let len = <VarInt as Protocol>::proto_len(&$id) + <$name as Protocol>::proto_len(&value);
                 try!(<VarInt as Protocol>::proto_encode(len as i32, dst));
@@ -34,11 +36,12 @@ macro_rules! packet {
                 // println!("proto_encode name={} id={:x} length={}", stringify!($name), $id, len);
                 Ok(())
             }
+
             #[allow(unused_variables)]
-            fn proto_decode(src: &mut Reader, plen: usize) -> IoResult<$name> {
-                let len: i32 = try!(<VarInt as Protocol>::proto_decode(src, plen));
-                let id: i32 = try!(<VarInt as Protocol>::proto_decode(src, plen));
-                // println!("proto_decode name={} id={:x} length={}", stringify!($name), id, plen);
+            fn proto_decode(src: &mut Reader) -> IoResult<$name> {
+                let len: i32 = try!(<VarInt as Protocol>::proto_decode(src));
+                let id: i32 = try!(<VarInt as Protocol>::proto_decode(src));
+                // println!("proto_decode name={} id={:x}", stringify!($name), id);
                 if id != $id {
                     return Err(IoError {
                         kind: IoErrorKind::InvalidInput,
@@ -47,7 +50,7 @@ macro_rules! packet {
                     });
                 }
                 Ok($name {
-                    $($fname: try!(<$fty as Protocol>::proto_decode(src, plen))),*
+                    $($fname: try!(<$fty as Protocol>::proto_decode(src))),*
                 })
             }
         }
@@ -59,8 +62,10 @@ macro_rules! packet {
 
         impl Protocol for $name {
             type Clean = $name;
+
             #[allow(unused_variables)]
             fn proto_len(value: &$name) -> usize { 0 }
+
             fn proto_encode(value: $name, dst: &mut Writer) -> IoResult<()> {
                 let len = 1 + <$name as Protocol>::proto_len(&value);
                 try!(<VarInt as Protocol>::proto_encode(len as i32, dst));
@@ -68,11 +73,12 @@ macro_rules! packet {
                 // println!("proto_encode name={} id={:x} length={}", stringify!($name), $id, len);
                 Ok(())
             }
+
             #[allow(unused_variables)]
-            fn proto_decode(src: &mut Reader, plen: usize) -> IoResult<$name> {
-                let len: i32 = try!(<VarInt as Protocol>::proto_decode(src, plen));
-                let id: i32 = try!(<VarInt as Protocol>::proto_decode(src, plen));
-                // println!("proto_decode name={} id={:x} length={}", stringify!($name), id, plen);
+            fn proto_decode(src: &mut Reader) -> IoResult<$name> {
+                let len: i32 = try!(<VarInt as Protocol>::proto_decode(src));
+                let id: i32 = try!(<VarInt as Protocol>::proto_decode(src));
+                // println!("proto_decode name={} id={:x}", stringify!($name), id);
                 if id != $id {
                     return Err(IoError {
                         kind: IoErrorKind::InvalidInput,
@@ -96,14 +102,16 @@ macro_rules! impl_protocol {
     ($name:ty, $len:expr, $enc_name:ident, $dec_name:ident) => {
         impl Protocol for $name {
             type Clean = $name;
+
             #[allow(unused_variables)]
             fn proto_len(value: &$name) -> usize { $len }
+
             fn proto_encode(value: $name, dst: &mut Writer) -> IoResult<()> {
                 try!(dst.$enc_name(value));
                 Ok(())
             }
-            #[allow(unused_variables)]
-            fn proto_decode(src: &mut Reader, plen: usize) -> IoResult<$name> {
+
+            fn proto_decode(src: &mut Reader) -> IoResult<$name> {
                 Ok(try!(src.$dec_name()))
             }
         }
@@ -123,14 +131,16 @@ impl_protocol!(f64, 8, write_be_f64, read_be_f64);
 
 impl Protocol for bool {
     type Clean = bool;
+
     #[allow(unused_variables)]
     fn proto_len(value: &bool) -> usize { 1 }
+
     fn proto_encode(value: bool, dst: &mut Writer) -> IoResult<()> {
         try!(dst.write_u8(if value { 1 } else { 0 }));
         Ok(())
     }
-    #[allow(unused_variables)]
-    fn proto_decode(src: &mut Reader, plen: usize) -> IoResult<bool> {
+
+    fn proto_decode(src: &mut Reader) -> IoResult<bool> {
         let value = try!(src.read_u8());
         if value > 1 {
             Err(IoError {
