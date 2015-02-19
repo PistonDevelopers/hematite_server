@@ -1,4 +1,4 @@
-# hematite_server [![Build Status](https://travis-ci.org/PistonDevelopers/hematite.svg?branch=master)](https://travis-ci.org/PistonDevelopers/hematite)
+# hematite_server [![Build Status](https://travis-ci.org/PistonDevelopers/hematite_server.svg?branch=master)](https://travis-ci.org/PistonDevelopers/hematite_server)
 
 This is the Hematite server, an implementation of the [Minecraft][] server in [Rust][]. Some of our goals are:
 
