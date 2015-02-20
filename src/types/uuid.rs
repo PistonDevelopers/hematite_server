@@ -13,7 +13,7 @@ impl Protocol for Uuid {
     fn proto_len(value: &Uuid) -> usize { 16 }
 
     /// Writes `value` into `dst`
-    fn proto_encode(value: Uuid, dst: &mut Writer) -> IoResult<()> {
+    fn proto_encode(value: &Uuid, dst: &mut Writer) -> IoResult<()> {
         dst.write_all(value.as_bytes())
     }
 

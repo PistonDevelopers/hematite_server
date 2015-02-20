@@ -15,9 +15,9 @@ impl Protocol for String {
         <VarInt as Protocol>::proto_len(&(str_len as i32)) + str_len
     }
 
-    fn proto_encode(value: String, dst: &mut Writer) -> IoResult<()> {
+    fn proto_encode(value: &String, dst: &mut Writer) -> IoResult<()> {
         let str_len = value.len() as i32;
-        try!(<VarInt as Protocol>::proto_encode(str_len, dst));
+        try!(<VarInt as Protocol>::proto_encode(&str_len, dst));
         try!(dst.write_str(value.as_slice()));
         Ok(())
     }
