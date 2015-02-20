@@ -1,3 +1,22 @@
+#![feature(io)]
+
+extern crate "hematite_server" as hem;
+
+use std::old_io::MemReader;
+
+use hem::packet::Protocol;
+
 fn main() {
-    println!("Hello, world!");
+    let value = false;
+    let first_value = vec![0];
+
+    let mut w = Vec::new();
+    <bool as Protocol>::proto_encode(&value, &mut w).unwrap();
+    assert_eq!(&w, &first_value);
+
+    let mut r = MemReader::new(w.clone());
+    let value = <bool as Protocol>::proto_decode(&mut r).unwrap();
+    assert_eq!(false, value);
+
+    println!("It works!");
 }
