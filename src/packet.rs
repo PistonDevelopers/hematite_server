@@ -10,7 +10,7 @@ pub trait Protocol {
     type Clean = Self;
 
     fn proto_len(value: &Self::Clean) -> usize;
-    fn proto_encode(value: Self::Clean, dst: &mut Writer) -> IoResult<()>;
+    fn proto_encode(value: &Self::Clean, dst: &mut Writer) -> IoResult<()>;
     fn proto_decode(src: &mut Reader) -> IoResult<Self::Clean>;
 }
 
@@ -28,11 +28,11 @@ macro_rules! packet {
                 0 $(+ <$fty as Protocol>::proto_len(&value.$fname) as usize)*
             }
 
-            fn proto_encode(value: $name, dst: &mut Writer) -> IoResult<()> {
-                let len = <VarInt as Protocol>::proto_len(&$id) + <$name as Protocol>::proto_len(&value);
-                try!(<VarInt as Protocol>::proto_encode(len as i32, dst));
-                try!(<VarInt as Protocol>::proto_encode($id, dst));
-                $(try!(<$fty as Protocol>::proto_encode(value.$fname, dst));)*
+            fn proto_encode(value: &$name, dst: &mut Writer) -> IoResult<()> {
+                let len = <VarInt as Protocol>::proto_len(&$id) + <$name as Protocol>::proto_len(value);
+                try!(<VarInt as Protocol>::proto_encode(&(len as i32), dst));
+                try!(<VarInt as Protocol>::proto_encode(&$id, dst));
+                $(try!(<$fty as Protocol>::proto_encode(&value.$fname, dst));)*
                 // println!("proto_encode name={} id={:x} length={}", stringify!($name), $id, len);
                 Ok(())
             }
@@ -66,10 +66,10 @@ macro_rules! packet {
             #[allow(unused_variables)]
             fn proto_len(value: &$name) -> usize { 0 }
 
-            fn proto_encode(value: $name, dst: &mut Writer) -> IoResult<()> {
-                let len = 1 + <$name as Protocol>::proto_len(&value);
-                try!(<VarInt as Protocol>::proto_encode(len as i32, dst));
-                try!(<VarInt as Protocol>::proto_encode($id, dst));
+            fn proto_encode(value: &$name, dst: &mut Writer) -> IoResult<()> {
+                let len = 1 + <$name as Protocol>::proto_len(value);
+                try!(<VarInt as Protocol>::proto_encode(&(len as i32), dst));
+                try!(<VarInt as Protocol>::proto_encode(&$id, dst));
                 // println!("proto_encode name={} id={:x} length={}", stringify!($name), $id, len);
                 Ok(())
             }
@@ -106,8 +106,8 @@ macro_rules! impl_protocol {
             #[allow(unused_variables)]
             fn proto_len(value: &$name) -> usize { $len }
 
-            fn proto_encode(value: $name, dst: &mut Writer) -> IoResult<()> {
-                try!(dst.$enc_name(value));
+            fn proto_encode(value: &$name, dst: &mut Writer) -> IoResult<()> {
+                try!(dst.$enc_name(*value));
                 Ok(())
             }
 
@@ -135,8 +135,8 @@ impl Protocol for bool {
     #[allow(unused_variables)]
     fn proto_len(value: &bool) -> usize { 1 }
 
-    fn proto_encode(value: bool, dst: &mut Writer) -> IoResult<()> {
-        try!(dst.write_u8(if value { 1 } else { 0 }));
+    fn proto_encode(value: &bool, dst: &mut Writer) -> IoResult<()> {
+        try!(dst.write_u8(if *value { 1 } else { 0 }));
         Ok(())
     }
 

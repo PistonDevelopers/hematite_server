@@ -24,8 +24,8 @@ impl Protocol for VarInt {
     }
 
     /// Writes `value` as a VarInt into `dst`, it can be up to 5 bytes.
-    fn proto_encode(value: i32, dst: &mut Writer) -> IoResult<()> {
-        let mut temp = value as u32;
+    fn proto_encode(value: &i32, dst: &mut Writer) -> IoResult<()> {
+        let mut temp = *value as u32;
         loop {
             if (temp & !0x7fu32) == 0 {
                 try!(dst.write_u8(temp as u8));
@@ -78,8 +78,8 @@ impl Protocol for VarLong {
     }
 
     /// Writes `value` as a VarLong into `dst`, it can be up to 10 bytes.
-    fn proto_encode(value: i64, dst: &mut Writer) -> IoResult<()> {
-        let mut temp = value as u64;
+    fn proto_encode(value: &i64, dst: &mut Writer) -> IoResult<()> {
+        let mut temp = *value as u64;
         loop {
             if (temp & !0x7fu64) == 0 {
                 try!(dst.write_u8(temp as u8));
@@ -180,7 +180,7 @@ mod tests {
         let tests = varint_tests();
         for test in tests.iter() {
             let mut w = Vec::new();
-            <VarInt as Protocol>::proto_encode(test.value, &mut w).unwrap();
+            <VarInt as Protocol>::proto_encode(&test.value, &mut w).unwrap();
             assert_eq!(&w, &test.bytes);
         }
     }
@@ -200,7 +200,7 @@ mod tests {
         let tests = varlong_tests();
         for test in tests.iter() {
             let mut w = Vec::new();
-            <VarLong as Protocol>::proto_encode(test.value, &mut w).unwrap();
+            <VarLong as Protocol>::proto_encode(&test.value, &mut w).unwrap();
             assert_eq!(&w, &test.bytes);
         }
     }
