@@ -1,5 +1,5 @@
 #![feature(core)]
-#![feature(io)]
+#![feature(old_io)]
 #![feature(rustc_private)]
 
 extern crate flate;
