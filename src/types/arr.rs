@@ -1,10 +1,11 @@
 use std::iter::{ AdditiveIterator, FromIterator };
+use std::marker::PhantomData;
 use std::num::{ NumCast, ToPrimitive };
 use std::old_io::{ IoError, IoErrorKind, IoResult };
 
 use packet::Protocol;
 
-struct Arr<L, T>;
+pub struct Arr<L, T>(PhantomData<(fn() -> L, T)>);
 
 impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
     type Clean = Vec<T::Clean>;
@@ -15,13 +16,13 @@ impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
         len_len + len_values
     }
 
-    fn proto_encode(value: Vec<T::Clean>, dst: &mut Writer) -> IoResult<()> {
+    fn proto_encode(value: &Vec<T::Clean>, dst: &mut Writer) -> IoResult<()> {
         let len = try!(<L::Clean as NumCast>::from(value.len()).ok_or(IoError {
             kind: IoErrorKind::InvalidInput,
             desc: "could not convert length of vector to Array length type",
             detail: None
         }));
-        try!(<L as Protocol>::proto_encode(len, dst));
+        try!(<L as Protocol>::proto_encode(&len, dst));
         for elt in value {
             try!(<T as Protocol>::proto_encode(elt, dst));
         }
