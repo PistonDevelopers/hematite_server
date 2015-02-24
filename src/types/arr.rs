@@ -38,3 +38,57 @@ impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
         <IoResult<Vec<T::Clean>> as FromIterator<_>>::from_iter((0..len).map(|_| <T as Protocol>::proto_decode(src)))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::old_io::MemReader;
+
+    use packet::Protocol;
+    use types::VarInt;
+
+    #[test]
+    fn arr_encode_i8_varint() {
+        let mut dst = Vec::new();
+        let value = vec![0i32, -1i32];
+        <Arr<i8, VarInt> as Protocol>::proto_encode(&value, &mut dst).unwrap();
+        let bytes = vec![2, 0, 0xff, 0xff, 0xff, 0xff, 0xf];
+        assert_eq!(&dst, &bytes);
+    }
+
+    #[test]
+    fn arr_decode_i8_varint() {
+        let bytes = vec![2, 0, 0xff, 0xff, 0xff, 0xff, 0xf];
+        let arr = vec![0i32, -1i32];
+        let mut src = MemReader::new(bytes);
+        let value = <Arr<i8, VarInt> as Protocol>::proto_decode(&mut src).unwrap();
+        assert_eq!(arr, value);
+    }
+
+    #[test]
+    fn arr_encode_i32_i32() {
+        let mut dst = Vec::new();
+        let value = vec![0i32, -1i32];
+        <Arr<i32, i32> as Protocol>::proto_encode(&value, &mut dst).unwrap();
+        let bytes = vec![
+            0x00, 0x00, 0x00, 0x02,
+            0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff
+        ];
+        assert_eq!(&dst, &bytes);
+    }
+
+    #[test]
+    fn arr_decode_i32_i32() {
+        let bytes = vec![
+            0x00, 0x00, 0x00, 0x02,
+            0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff
+        ];
+        let arr = vec![0i32, -1i32];
+        let mut src = MemReader::new(bytes);
+        let value = <Arr<i32, i32> as Protocol>::proto_decode(&mut src).unwrap();
+        assert_eq!(arr, value);
+    }
+}
