@@ -1,8 +1,9 @@
 //! MC Protocol UUID data type.
 
-use std::old_io::{ IoError, IoErrorKind, IoResult };
+use std::io;
+use std::io::prelude::*;
 
-use packet::Protocol;
+use packet::{Protocol, ReadExactExt};
 use uuid::Uuid;
 
 /// UUID read/write wrapper.
@@ -13,19 +14,15 @@ impl Protocol for Uuid {
     fn proto_len(value: &Uuid) -> usize { 16 }
 
     /// Writes `value` into `dst`
-    fn proto_encode(value: &Uuid, dst: &mut Writer) -> IoResult<()> {
+    fn proto_encode(value: &Uuid, dst: &mut Write) -> io::Result<()> {
         dst.write_all(value.as_bytes())
     }
 
     /// Reads 16 bytes from `src` and returns a `Uuid`
     #[allow(unused_variables)]
-    fn proto_decode(src: &mut Reader) -> IoResult<Uuid> {
+    fn proto_decode(mut src: &mut Read) -> io::Result<Uuid> {
         let v = try!(src.read_exact(16));
-        Uuid::from_bytes(&v).ok_or(IoError {
-            kind: IoErrorKind::InvalidInput,
-            desc: "invalid UUID value",
-            detail: Some(format!("value {:?} can't be used to create UUID", v))
-        })
+        Uuid::from_bytes(&v).ok_or(io::Error::new(io::ErrorKind::InvalidInput, "invalid UUID value", Some(format!("value {:?} can't be used to create UUID", v))))
     }
 }
 

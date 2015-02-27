@@ -1,6 +1,9 @@
 //! Protocol Buffer Varints.
 
-use std::old_io::{ IoError, IoErrorKind, IoResult };
+use byteorder::{ReadBytesExt, WriteBytesExt};
+
+use std::io;
+use std::io::prelude::*;
 use std::iter::range_step;
 
 use packet::Protocol;
@@ -24,7 +27,7 @@ impl Protocol for VarInt {
     }
 
     /// Writes `value` as a VarInt into `dst`, it can be up to 5 bytes.
-    fn proto_encode(value: &i32, dst: &mut Writer) -> IoResult<()> {
+    fn proto_encode(value: &i32, mut dst: &mut Write) -> io::Result<()> {
         let mut temp = *value as u32;
         loop {
             if (temp & !0x7fu32) == 0 {
@@ -39,23 +42,19 @@ impl Protocol for VarInt {
 
     /// Reads up to 5 bytes from `src`, until a valid VarInt is found.
     #[allow(unused_variables)]
-    fn proto_decode(src: &mut Reader) -> IoResult<i32> {
+    fn proto_decode(mut src: &mut Read) -> io::Result<i32> {
         let mut x = 0i32;
 
         for shift in range_step(0, 32, 7) {
             let b = try!(src.read_u8()) as i32;
             x |= (b & 0x7F) << shift;
             if (b & 0x80) == 0 {
-                return Ok(x)
+                return Ok(x);
             }
         }
 
         // The number is too large to represent in a 32-bit value.
-        Err(IoError {
-            kind: IoErrorKind::InvalidInput,
-            desc: "VarInt too big",
-            detail: None
-        })
+        Err(io::Error::new(io::ErrorKind::InvalidInput, "VarInt too big", None))
     }
 }
 
@@ -78,7 +77,7 @@ impl Protocol for VarLong {
     }
 
     /// Writes `value` as a VarLong into `dst`, it can be up to 10 bytes.
-    fn proto_encode(value: &i64, dst: &mut Writer) -> IoResult<()> {
+    fn proto_encode(value: &i64, mut dst: &mut Write) -> io::Result<()> {
         let mut temp = *value as u64;
         loop {
             if (temp & !0x7fu64) == 0 {
@@ -93,24 +92,19 @@ impl Protocol for VarLong {
 
     /// Reads up to 10 bytes from `dst`, until a valid VarLong is found.
     #[allow(unused_variables)]
-    fn proto_decode(dst: &mut Reader) -> IoResult<i64> {
+    fn proto_decode(mut dst: &mut Read) -> io::Result<i64> {
         let mut x = 0i64;
 
         for shift in range_step(0, 64, 7) {
             let b = try!(dst.read_u8()) as i64;
             x |= (b & 0x7F) << shift;
             if (b & 0x80) == 0 {
-                return Ok(x)
+                return Ok(x);
             }
         }
 
         // The number is too large to represent in a 64-bit value.
-        Err(IoError {
-            kind: IoErrorKind::InvalidInput,
-            desc: "VarLong too big",
-            detail: None
-        })
-
+        Err(io::Error::new(io::ErrorKind::InvalidInput, "VarLong too big", None))
     }
 }
 
@@ -118,7 +112,7 @@ impl Protocol for VarLong {
 mod tests {
     use super::*;
 
-    use std::old_io::MemReader;
+    use std::io;
 
     use packet::Protocol;
 
@@ -169,7 +163,7 @@ mod tests {
     fn varint_read() {
         let tests = varint_tests();
         for test in tests.iter() {
-            let mut r = MemReader::new(test.bytes.clone());
+            let mut r = io::Cursor::new(test.bytes.clone());
             let value = <VarInt as Protocol>::proto_decode(&mut r).unwrap();
             assert_eq!(test.value, value);
         }
@@ -189,7 +183,7 @@ mod tests {
     fn varlong_read() {
         let tests = varlong_tests();
         for test in tests.iter() {
-            let mut r = MemReader::new(test.bytes.clone());
+            let mut r = io::Cursor::new(test.bytes.clone());
             let value = <VarLong as Protocol>::proto_decode(&mut r).unwrap();
             assert_eq!(test.value, value);
         }

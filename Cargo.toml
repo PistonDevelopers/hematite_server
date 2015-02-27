@@ -16,4 +16,5 @@ name = "hematite_server"
 path = "src/lib.rs"
 
 [dependencies]
+byteorder = "*"
 uuid = "*"
