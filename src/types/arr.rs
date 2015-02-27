@@ -1,7 +1,10 @@
+//! Minecraft protocol length-prefixed array data type
+
 use std::iter::{ AdditiveIterator, FromIterator };
 use std::marker::PhantomData;
 use std::num::{ NumCast, ToPrimitive };
-use std::old_io::{ IoError, IoErrorKind, IoResult };
+use std::io;
+use std::io::prelude::*;
 
 use packet::Protocol;
 
@@ -16,12 +19,8 @@ impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
         len_len + len_values
     }
 
-    fn proto_encode(value: &Vec<T::Clean>, dst: &mut Writer) -> IoResult<()> {
-        let len = try!(<L::Clean as NumCast>::from(value.len()).ok_or(IoError {
-            kind: IoErrorKind::InvalidInput,
-            desc: "could not convert length of vector to Array length type",
-            detail: None
-        }));
+    fn proto_encode(value: &Vec<T::Clean>, dst: &mut Write) -> io::Result<()> {
+        let len = try!(<L::Clean as NumCast>::from(value.len()).ok_or(io::Error::new(io::ErrorKind::InvalidInput, "could not convert length of vector to Array length type", None)));
         try!(<L as Protocol>::proto_encode(&len, dst));
         for elt in value {
             try!(<T as Protocol>::proto_encode(elt, dst));
@@ -29,13 +28,9 @@ impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
         Ok(())
     }
 
-    fn proto_decode(src: &mut Reader) -> IoResult<Vec<T::Clean>> {
-        let len = try!(try!(<L as Protocol>::proto_decode(src)).to_uint().ok_or(IoError {
-            kind: IoErrorKind::InvalidInput,
-            desc: "could not read length of vector from Array length type",
-            detail: None
-        }));
-        <IoResult<Vec<T::Clean>> as FromIterator<_>>::from_iter((0..len).map(|_| <T as Protocol>::proto_decode(src)))
+    fn proto_decode(src: &mut Read) -> io::Result<Vec<T::Clean>> {
+        let len = try!(try!(<L as Protocol>::proto_decode(src)).to_uint().ok_or(io::Error::new(io::ErrorKind::InvalidInput, "could not read length of vector from Array length type", None)));
+        <io::Result<Vec<T::Clean>> as FromIterator<_>>::from_iter((0..len).map(|_| <T as Protocol>::proto_decode(src)))
     }
 }
 
@@ -43,7 +38,7 @@ impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
 mod tests {
     use super::*;
 
-    use std::old_io::MemReader;
+    use std::io;
 
     use packet::Protocol;
     use types::VarInt;
@@ -61,7 +56,7 @@ mod tests {
     fn arr_decode_i8_varint() {
         let bytes = vec![2, 0, 0xff, 0xff, 0xff, 0xff, 0xf];
         let arr = vec![0i32, -1i32];
-        let mut src = MemReader::new(bytes);
+        let mut src = io::Cursor::new(bytes);
         let value = <Arr<i8, VarInt> as Protocol>::proto_decode(&mut src).unwrap();
         assert_eq!(arr, value);
     }
@@ -87,7 +82,7 @@ mod tests {
             0xff, 0xff, 0xff, 0xff
         ];
         let arr = vec![0i32, -1i32];
-        let mut src = MemReader::new(bytes);
+        let mut src = io::Cursor::new(bytes);
         let value = <Arr<i32, i32> as Protocol>::proto_decode(&mut src).unwrap();
         assert_eq!(arr, value);
     }

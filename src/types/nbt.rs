@@ -1,11 +1,15 @@
 //! MC Named Binary Tag type.
 
+use byteorder::{BigEndian, WriteBytesExt};
+
 use std::collections::HashMap;
+use std::io;
+use std::io::prelude::*;
 use std::iter::AdditiveIterator;
-use std::old_io::{ BufReader, IoError, IoErrorKind, IoResult };
 use std::ops::Index;
 
 use packet::Protocol;
+use util::ReadExactExt;
 
 use flate::{ inflate_bytes, inflate_bytes_zlib };
 
@@ -50,17 +54,17 @@ impl Nbt {
     ///
     /// Every NBT file will always begin with a TAG_COMPOUND (0x0a). No
     /// exceptions.
-    pub fn from_reader(src: &mut Reader) -> IoResult<Nbt> {
-        Ok(try!(<Nbt as Protocol>::proto_decode(src)))
+    pub fn from_reader(src: &mut Read) -> io::Result<Nbt> {
+        <Nbt as Protocol>::proto_decode(src)
     }
-    pub fn from_gzip(data: &[u8]) -> IoResult<Nbt> {
+    pub fn from_gzip(data: &[u8]) -> io::Result<Nbt> {
         assert_eq!(&data[..4], [0x1f, 0x8b, 0x08, 0x00].as_slice());
         let data = inflate_bytes(&data[10..]).expect("inflate failed");
-        Nbt::from_reader(&mut BufReader::new(data.as_slice()))
+        Nbt::from_reader(&mut io::Cursor::new(data.as_slice()))
     }
-    pub fn from_zlib(data: &[u8]) -> IoResult<Nbt> {
+    pub fn from_zlib(data: &[u8]) -> io::Result<Nbt> {
         let data = inflate_bytes_zlib(data).expect("inflate failed");
-        Nbt::from_reader(&mut BufReader::new(data.as_slice()))
+        Nbt::from_reader(&mut io::Cursor::new(data.as_slice()))
     }
     pub fn as_byte(&self) -> Option<i8> {
         match *self { Nbt::Byte(b) => Some(b), _ => None }
@@ -101,14 +105,14 @@ impl Nbt {
         }
     }
 
-    fn write_str<'a>(name: &'a str, dst: &mut Writer) -> IoResult<()> {
+    fn write_str<'a>(name: &'a str, dst: &mut Write) -> io::Result<()> {
         let len = name.len() as u16;
         try!(<u16 as Protocol>::proto_encode(&len, dst));
-        if len != 0 { try!(dst.write_str(name)); }
+        if len != 0 { try!(dst.write_all(name.as_bytes())); }
         Ok(())
     }
 
-    fn read_str(src: &mut Reader) -> IoResult<String> {
+    fn read_str(mut src: &mut Read) -> io::Result<String> {
         let len = try!(<u16 as Protocol>::proto_decode(src));
         if len == 0 { return Ok("".to_string()); }
         let bytes = try!(src.read_exact(len as usize));
@@ -116,7 +120,7 @@ impl Nbt {
         Ok(utf8_str)
     }
 
-    fn write_i8_array(array: &Vec<i8>, dst: &mut Writer) -> IoResult<()> {
+    fn write_i8_array(array: &Vec<i8>, dst: &mut Write) -> io::Result<()> {
         let len = array.len() as i32;
         try!(<i32 as Protocol>::proto_encode(&len, dst));
         for value in array.iter() {
@@ -125,7 +129,7 @@ impl Nbt {
         Ok(())
     }
 
-    fn read_i8_array(src: &mut Reader) -> IoResult<Vec<i8>> {
+    fn read_i8_array(src: &mut Read) -> io::Result<Vec<i8>> {
         let length = try!(<i32 as Protocol>::proto_decode(src)) as usize;
         let mut v = Vec::with_capacity(length);
         for _ in range(0, length) {
@@ -134,7 +138,7 @@ impl Nbt {
         Ok(v)
     }
 
-    fn write_list<T: Protocol>(id: i8, xs: &Vec<<T as Protocol>::Clean>, dst: &mut Writer) -> IoResult<()> {
+    fn write_list<T: Protocol>(id: i8, xs: &Vec<<T as Protocol>::Clean>, dst: &mut Write) -> io::Result<()> {
         try!(<i8 as Protocol>::proto_encode(&id, dst));
         let len = xs.len() as i32;
         try!(<i32 as Protocol>::proto_encode(&len, dst));
@@ -144,7 +148,7 @@ impl Nbt {
         Ok(())
     }
 
-    fn read_list<T: Protocol>(length: usize, src: &mut Reader) -> IoResult<Vec<<T as Protocol>::Clean>> {
+    fn read_list<T: Protocol>(length: usize, src: &mut Read) -> io::Result<Vec<<T as Protocol>::Clean>> {
         let mut v = Vec::with_capacity(length);
         for _ in range(0, length) {
             v.push(try!(<T as Protocol>::proto_decode(src)));
@@ -152,7 +156,7 @@ impl Nbt {
         Ok(v)
     }
 
-    fn write_compound(compound: &Compound, dst: &mut Writer) -> IoResult<()> {
+    fn write_compound(compound: &Compound, dst: &mut Write) -> io::Result<()> {
         for (name, value) in compound.iter() {
             try!(<u8 as Protocol>::proto_encode(&value.id(), dst));
             try!(Nbt::write_str(name.as_slice(), dst));
@@ -175,7 +179,7 @@ impl Nbt {
         Ok(())
     }
 
-    fn read_compound(src: &mut Reader) -> IoResult<Compound> {
+    fn read_compound(src: &mut Read) -> io::Result<Compound> {
         let mut map = HashMap::new();
         loop {
             let tag = try!(<i8 as Protocol>::proto_decode(src));
@@ -201,7 +205,7 @@ impl Nbt {
         Ok(map)
     }
 
-    fn write_i32_array(array: &Vec<i32>, dst: &mut Writer) -> IoResult<()> {
+    fn write_i32_array(array: &Vec<i32>, dst: &mut Write) -> io::Result<()> {
         let len = array.len() as i32;
         try!(<i32 as Protocol>::proto_encode(&len, dst));
         for value in array.iter() {
@@ -210,7 +214,7 @@ impl Nbt {
         Ok(())
     }
 
-    fn read_i32_array(src: &mut Reader) -> IoResult<Vec<i32>> {
+    fn read_i32_array(src: &mut Read) -> io::Result<Vec<i32>> {
         let length = try!(<i32 as Protocol>::proto_decode(src)) as usize;
         let mut array = Vec::with_capacity(length);
         for _ in range(0, length) {
@@ -256,33 +260,25 @@ impl Protocol for Nbt {
         1 + size // All tags are preceded by TypeId
     }
 
-    fn proto_encode(value: &Nbt, dst: &mut Writer) -> IoResult<()> {
+    fn proto_encode(value: &Nbt, dst: &mut Write) -> io::Result<()> {
         // Write root compound
         try!(<u8 as Protocol>::proto_encode(&0x0a, dst));
         try!(Nbt::write_str("", dst));
         // Write `value` contents
         match value {
             &Nbt::Compound(ref compound) => try!(Nbt::write_compound(compound, dst)),
-            _                            => {
-                return Err(IoError {
-                    kind: IoErrorKind::InvalidInput,
-                    desc: "invalid NBT file",
-                    detail: Some(format!("root value must be NBT Compound"))
-                });
+            _ => {
+                return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid NBT file", Some(format!("root value must be NBT Compound"))));
             }
         }
         Ok(())
     }
 
-    fn proto_decode(src: &mut Reader) -> IoResult<Nbt> {
+    fn proto_decode(src: &mut Read) -> io::Result<Nbt> {
         // Read root compound
         let id = try!(<u8 as Protocol>::proto_decode(src));
         if id != 0x0a {
-            return Err(IoError {
-                kind: IoErrorKind::InvalidInput,
-                desc: "invalid NBT file",
-                detail: Some(format!("root value must be NBT Compound"))
-            });
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid NBT file", Some(format!("root value must be NBT Compound"))));
         }
         try!(Nbt::read_str(src)); // compound name
         // Read root contents
@@ -318,7 +314,7 @@ impl Protocol for List {
         }
     }
 
-    fn proto_encode(value: &List, dst: &mut Writer) -> IoResult<()> {
+    fn proto_encode(value: &List, mut dst: &mut Write) -> io::Result<()> {
         match value {
             &List::Byte(ref xs) =>      try!(Nbt::write_list::<i8>(0x01, xs, dst)),
             &List::Short(ref xs) =>     try!(Nbt::write_list::<i16>(0x02, xs, dst)),
@@ -328,14 +324,14 @@ impl Protocol for List {
             &List::Double(ref xs) =>    try!(Nbt::write_list::<f64>(0x06, xs, dst)),
             &List::ByteArray(ref xs) => {
                 try!(dst.write_i8(0x07));
-                try!(dst.write_be_i32(xs.len() as i32));
+                try!(dst.write_i32::<BigEndian>(xs.len() as i32));
                 for array in xs.iter() {
                     try!(Nbt::write_i8_array(array, dst));
                 }
             }
             &List::String(ref xs) => {
                 try!(dst.write_i8(0x08));
-                try!(dst.write_be_i32(xs.len() as i32));
+                try!(dst.write_i32::<BigEndian>(xs.len() as i32));
                 for value in xs.iter() {
                     try!(Nbt::write_str(value.as_slice(), dst));
                 }
@@ -343,14 +339,14 @@ impl Protocol for List {
             &List::List(ref xs) => try!(Nbt::write_list::<List>(0x09, xs, dst)),
             &List::Compound(ref xs) => {
                 try!(dst.write_i8(0x0a));
-                try!(dst.write_be_i32(xs.len() as i32));
+                try!(dst.write_i32::<BigEndian>(xs.len() as i32));
                 for compound in xs.iter() {
                     try!(Nbt::write_compound(compound, dst));
                 }
             }
             &List::IntArray(ref xs) => {
                 try!(dst.write_i8(0x0b));
-                try!(dst.write_be_i32(xs.len() as i32));
+                try!(dst.write_i32::<BigEndian>(xs.len() as i32));
                 for array in xs.iter() {
                     try!(Nbt::write_i32_array(array, dst));
                 }
@@ -359,7 +355,7 @@ impl Protocol for List {
         Ok(())
     }
 
-    fn proto_decode(src: &mut Reader) -> IoResult<List> {
+    fn proto_decode(src: &mut Read) -> io::Result<List> {
         let tag = try!(<i8 as Protocol>::proto_decode(src));
         let length = try!(<i32 as Protocol>::proto_decode(src)) as usize;
         match tag {
@@ -408,13 +404,12 @@ mod tests {
     use super::*;
 
     use std::collections::HashMap;
+    use std::io;
 
     use packet::Protocol;
 
     #[test]
     fn nbt_encode_decode() {
-        use std::old_io::MemReader;
-
         let mut c = HashMap::new();
         c.insert("name".to_string(), Nbt::String("Herobrine".to_string()));
         c.insert("health".to_string(), Nbt::Byte(100));
@@ -454,7 +449,7 @@ mod tests {
         <Nbt as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         // assert_eq!(&dst, &bytes);
 
-        let mut src = MemReader::new(dst);
+        let mut src = io::Cursor::new(dst);
         let nbt2 = <Nbt as Protocol>::proto_decode(&mut src).unwrap();
         assert_eq!(nbt2, nbt);
     }

@@ -1,8 +1,8 @@
-#![feature(old_io)]
+#![feature(io)]
 
 extern crate "hematite_server" as hem;
 
-use std::old_io::MemReader;
+use std::io;
 
 use hem::packet::Protocol;
 
@@ -14,7 +14,7 @@ fn main() {
     <bool as Protocol>::proto_encode(&value, &mut w).unwrap();
     assert_eq!(&w, &first_value);
 
-    let mut r = MemReader::new(w.clone());
+    let mut r = io::Cursor::new(w);
     let value = <bool as Protocol>::proto_decode(&mut r).unwrap();
     assert_eq!(false, value);
 
