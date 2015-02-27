@@ -8,7 +8,8 @@ use std::io::prelude::*;
 use std::iter::AdditiveIterator;
 use std::ops::Index;
 
-use packet::{Protocol, ReadExactExt};
+use packet::Protocol;
+use util::ReadExactExt;
 
 use flate::{ inflate_bytes, inflate_bytes_zlib };
 

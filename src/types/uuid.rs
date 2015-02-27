@@ -3,7 +3,9 @@
 use std::io;
 use std::io::prelude::*;
 
-use packet::{Protocol, ReadExactExt};
+use packet::Protocol;
+use util::ReadExactExt;
+
 use uuid::Uuid;
 
 /// UUID read/write wrapper.

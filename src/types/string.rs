@@ -4,8 +4,9 @@ use std::error::Error;
 use std::io;
 use std::io::prelude::*;
 
-use packet::{Protocol, ReadExactExt};
+use packet::Protocol;
 use types::VarInt;
+use util::ReadExactExt;
 
 /// UTF-8 string prefixed with its length as a VarInt.
 impl Protocol for String {
