@@ -5,17 +5,17 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::prelude::*;
 use std::iter::range_step;
+use std::marker::PhantomData;
 
 use packet::Protocol;
 
-/// Protocol Buffer varint, encoding a two's complement signed 32-bit integer.
-#[derive(Copy, Debug)]
-pub struct VarInt;
+/// Protocol Buffer varint.
+pub struct Var<T>(PhantomData<T>);
 
-impl Protocol for VarInt {
+impl Protocol for Var<i32> {
     type Clean = i32;
 
-    /// Size in bytes of `value` as a VarInt
+    /// Size in bytes of `value` as a `Var<i32>`
     fn proto_len(value: &i32) -> usize {
         let value = *value as u32;
         for i in 1..5 {
@@ -40,7 +40,7 @@ impl Protocol for VarInt {
         }
     }
 
-    /// Reads up to 5 bytes from `src`, until a valid VarInt is found.
+    /// Reads up to 5 bytes from `src`, until a valid `Var<i32>` is found.
     #[allow(unused_variables)]
     fn proto_decode(mut src: &mut Read) -> io::Result<i32> {
         let mut x = 0i32;
@@ -58,14 +58,10 @@ impl Protocol for VarInt {
     }
 }
 
-/// Protocol Buffer varint, encoding a two's complement signed 64-bit integer.
-#[derive(Copy, Debug)]
-pub struct VarLong;
-
-impl Protocol for VarLong {
+impl Protocol for Var<i64> {
     type Clean = i64;
 
-    /// Size in bytes of `value` as a VarLong
+    /// Size in bytes of `value` as a `Var<i64>`
     fn proto_len(value: &i64) -> usize {
         let value = *value as u64;
         for i in 1..10 {
@@ -90,7 +86,7 @@ impl Protocol for VarLong {
         }
     }
 
-    /// Reads up to 10 bytes from `dst`, until a valid VarLong is found.
+    /// Reads up to 10 bytes from `dst`, until a valid `Var<i64>` is found.
     #[allow(unused_variables)]
     fn proto_decode(mut dst: &mut Read) -> io::Result<i64> {
         let mut x = 0i64;
@@ -164,7 +160,7 @@ mod tests {
         let tests = varint_tests();
         for test in tests.iter() {
             let mut r = io::Cursor::new(test.bytes.clone());
-            let value = <VarInt as Protocol>::proto_decode(&mut r).unwrap();
+            let value = <Var<i32> as Protocol>::proto_decode(&mut r).unwrap();
             assert_eq!(test.value, value);
         }
     }
@@ -174,7 +170,7 @@ mod tests {
         let tests = varint_tests();
         for test in tests.iter() {
             let mut w = Vec::new();
-            <VarInt as Protocol>::proto_encode(&test.value, &mut w).unwrap();
+            <Var<i32> as Protocol>::proto_encode(&test.value, &mut w).unwrap();
             assert_eq!(&w, &test.bytes);
         }
     }
@@ -184,7 +180,7 @@ mod tests {
         let tests = varlong_tests();
         for test in tests.iter() {
             let mut r = io::Cursor::new(test.bytes.clone());
-            let value = <VarLong as Protocol>::proto_decode(&mut r).unwrap();
+            let value = <Var<i64> as Protocol>::proto_decode(&mut r).unwrap();
             assert_eq!(test.value, value);
         }
     }
@@ -194,7 +190,7 @@ mod tests {
         let tests = varlong_tests();
         for test in tests.iter() {
             let mut w = Vec::new();
-            <VarLong as Protocol>::proto_encode(&test.value, &mut w).unwrap();
+            <Var<i64> as Protocol>::proto_encode(&test.value, &mut w).unwrap();
             assert_eq!(&w, &test.bytes);
         }
     }
