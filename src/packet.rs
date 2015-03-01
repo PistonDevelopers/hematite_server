@@ -100,7 +100,7 @@ macro_rules! packets {
             pub mod $state_mod {
                 pub mod clientbound {
                     #![allow(unused_imports)]
-                    use packet::{Packet, Protocol, State};
+                    use packet::{BlockChangeRecord, Packet, Protocol, Stat, State};
                     use types::{Arr, Nbt, Slot, Var};
 
                     use std::io;
@@ -117,7 +117,7 @@ macro_rules! packets {
 
                 pub mod serverbound {
                     #![allow(unused_imports)]
-                    use packet::{Packet, Protocol, State};
+                    use packet::{BlockChangeRecord, Packet, Protocol, Stat, State};
                     use types::{Arr, Nbt, Slot, Var};
 
                     use std::io;
@@ -205,6 +205,40 @@ macro_rules! impl_protocol {
                 src.$dec_name::<BigEndian>().map_err(|err| FromError::from_error(err))
             }
         }
+    }
+}
+
+macro_rules! proto_struct {
+    ($name:ident { $($fname:ident: $fty:ty),+ }) => {
+        #[derive(Debug)]
+        pub struct $name {
+            $(pub $fname: <$fty as Protocol>::Clean),*
+        }
+
+        impl Protocol for $name {
+            type Clean = $name;
+
+            fn proto_len(value: &$name) -> usize {
+                0 $(+ <$fty as Protocol>::proto_len(&value.$fname) as usize)*
+            }
+
+            fn proto_encode(value: &$name, dst: &mut Write) -> io::Result<()> {
+                $(try!(<$fty as Protocol>::proto_encode(&value.$fname, dst));)*
+                Ok(())
+            }
+
+            fn proto_decode(mut src: &mut Read) -> io::Result<$name> {
+                Ok($name {
+                    $($fname: try!(<$fty as Protocol>::proto_decode(src))),*
+                })
+            }
+        }
+    }
+}
+
+macro_rules! proto_structs {
+    ($($name:ident { $($fields:tt)+ })+) => {
+        $(proto_struct!($name { $($fields)* });)*
     }
 }
 
@@ -301,6 +335,19 @@ impl Protocol for State {
     }
 }
 
+proto_structs! {
+    BlockChangeRecord {
+        xz: u8,
+        y: u8,
+        block_id: Var<i32>
+    }
+
+    Stat {
+        name: String,
+        value: Var<i32>
+    }
+}
+
 packets! {
     Handshaking => handshake {
         clientbound {
@@ -344,7 +391,7 @@ packets! {
             0x1F => SetExperience { xp_bar: f32, level: Var<i32>, xp_total: Var<i32> }
             // 0x20 => EntityProperties { entity_id: Var<i32>, properties: Arr<i32, Property> }
             // 0x21 => ChunkData { chunk_x: i32, chunk_z: i32, ground_up_continuous: bool, mask: u16, chunk_data: Chunk; encode { ... }; decode { ... }; } // chunk_data is length-prefixed and may or may not represent an entire chunk column
-            // 0x22 => MultiBlockChange { chunk_x: i32, chunk_z: i32, records: Arr<Var<i32>, BlockChangeRecord> }
+            0x22 => MultiBlockChange { chunk_x: i32, chunk_z: i32, records: Arr<Var<i32>, BlockChangeRecord> }
             0x23 => BlockChange { location: i64, block_id: Var<i32> }
             0x24 => BlockAction { location: i64, byte1: u8, byte2: u8, block_type: Var<i32> }
             0x25 => BlockBreakAnimation { entity_id: Var<i32>, location: i64, destroy_stage: i8 }
@@ -365,8 +412,8 @@ packets! {
             // 0x34 => UpdateMap { map_id: Var<i32>, scale: i8, icons: Arr<Var<i32>, MapIcon>, data: MapData } // MapData is a quirky format holding optional pixel data for an arbitrary rectangle on the map
             // 0x35 => UpdateBlockEntity { location: i64, action: u8, nbt_data: Nbt; encode { ... }; decode { ... }; } // PROBLEM: nbt_data is omitted entirely if it encodes an empty NBT tag
             0x36 => SignEditorOpen { location: i64 }
-            // 0x37 => Statistics { stats: Arr<Var<i32>, Stat> }
-            // 0x38 => UpdatePlayerList { action: Var<i32>, players: Arr<Var<i32>, PlayerListItem> }
+            0x37 => Statistics { stats: Arr<Var<i32>, Stat> }
+            // 0x38 => UpdatePlayerList { action: Var<i32>, players: Arr<Var<i32>, PlayerListItem>; encode { ... }; decode { ... }; } // PROBLEM: suructure of `players` elements depends on `action`
             0x39 => PlayerAbilities { flags: i8, flying_speed: f32, walking_speed: f32 }
             0x3a => TabComplete { matches: Arr<Var<i32>, String> }
             // 0x3b => ScoreboardObjective { objective_name: String, mode: ObjectiveAction }
