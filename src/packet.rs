@@ -139,6 +139,7 @@ macro_rules! packets {
                     use std::io;
                     use std::io::prelude::*;
 
+                    use util::ReadExactExt;
                     use uuid::Uuid;
 
                     $(packet!{ $c_name ($c_id) { $($c_packet)* } })*
@@ -156,6 +157,7 @@ macro_rules! packets {
                     use std::io;
                     use std::io::prelude::*;
 
+                    use util::ReadExactExt;
                     use uuid::Uuid;
 
                     $(packet!{ $s_name ($s_id) { $($s_packet)* } })*
@@ -175,7 +177,7 @@ macro_rules! packets {
         pub enum PacketEnum {
             $($state($state_mod::PacketEnum)),*
         }
-        
+
         #[derive(Debug)]
         pub enum State {
             $($state),*
@@ -225,15 +227,15 @@ macro_rules! impl_protocol {
     ($name:ty, $len:expr, $enc_name:ident, $dec_name:ident) => {
         impl Protocol for $name {
             type Clean = $name;
-    
+
             #[allow(unused_variables)]
             fn proto_len(value: &$name) -> usize { $len }
-    
+
             fn proto_encode(value: &$name, mut dst: &mut Write) -> io::Result<()> {
                 try!(dst.$enc_name::<BigEndian>(*value));
                 Ok(())
             }
-    
+
             fn proto_decode(mut src: &mut Read) -> io::Result<$name> {
                 src.$dec_name::<BigEndian>().map_err(|err| FromError::from_error(err))
             }
@@ -459,7 +461,21 @@ packets! {
             // 0x3c => UpdateScore { score_name: String, action: ScoreAction }
             0x3d => DisplayScoreboard { position: i8, score_name: String }
             // 0x3e => UpdateTeam { team_name: String, action: TeamAction }
-            // 0x3f => PluginMessage { channel: String, data: Vec<u8>; impl Packet for PluginMessage { ... } } // PROBLEM: length of `data` comes from packet length
+            0x3f => PluginMessage { channel: String, data: Vec<u8>;
+                impl Packet for PluginMessage {
+                    fn encode(&self, mut dst: &mut Write) -> io::Result<()> {
+                        try!(<String as Protocol>::proto_encode(&self.channel, dst));
+                        try!(dst.write_all(&self.data));
+                        Ok(())
+                    }
+                    fn decode(mut src: &mut Read, len: usize) -> io::Result<PluginMessage> {
+                        Ok(PluginMessage{
+                            channel: try!(<String as Protocol>::proto_decode(src)),
+                            data: try!(src.read_exact(len)),
+                        })
+                    }
+                }
+            }
             // 0x40 => Disconnect { reason: Chat }
             0x41 => ServerDifficulty { difficulty: u8 }
             // 0x42 => PlayCombatEvent { event: CombatEvent }
@@ -495,7 +511,21 @@ packets! {
             0x14 => TabComplete { text: String, looking_at: Option<i64> }
             0x15 => ClientSettings { locale: String, view_distance: i8, chat_mode: i8, chat_colors: bool, displayed_skin_parts: u8 }
             0x16 => ClientStatus { action_id: Var<i32> }
-            // 0x17 => PluginMessage { channel: String, data: Vec<u8>; impl Packet for PluginMessage { ... } } // PROBLEM: length of `data` comes from packet length
+            0x17 => PluginMessage { channel: String, data: Vec<u8>;
+                impl Packet for PluginMessage {
+                    fn encode(&self, mut dst: &mut Write) -> io::Result<()> {
+                        try!(<String as Protocol>::proto_encode(&self.channel, dst));
+                        try!(dst.write_all(&self.data));
+                        Ok(())
+                    }
+                    fn decode(mut src: &mut Read, len: usize) -> io::Result<PluginMessage> {
+                        Ok(PluginMessage{
+                            channel: try!(<String as Protocol>::proto_decode(src)),
+                            data: try!(src.read_exact(len)),
+                        })
+                    }
+                }
+            }
             0x18 => Spectate { target_player: Uuid }
             0x19 => ResourcePackStatus { hash: String, result: Var<i32> }
         }
