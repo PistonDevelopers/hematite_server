@@ -465,7 +465,7 @@ packets! {
         }
         serverbound {
             0x00 => KeepAlive { keep_alive_id: i32 }
-            // 0x01 => ChatMessage { message: Chat }
+            0x01 => ChatMessage { message: String }
             // 0x02 => UseEntity { target_eid: i32, use_type: EntityUseAction }
             0x03 => PlayerIdle { on_ground: bool }
             0x04 => PlayerPosition { x: f64, y: f64, z: f64, on_ground: bool }
