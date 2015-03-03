@@ -17,16 +17,27 @@ pub trait Protocol {
     fn proto_decode(src: &mut Read) -> io::Result<Self::Clean>;
 }
 
-/// A trait for encoding/decoding the body of a single packet type.
-pub trait Packet {
+/// Holds packet methods implemented by the `packets!` macro for all packets.
+trait PacketBase {
     /// The packet ID.
     fn id(&self) -> i32;
-    /// The length of the packet's fields, in bytes.
-    fn len(&self) -> usize;
+}
+
+/// A trait for encoding/decoding the body of a single packet type.
+trait Packet: PacketBase {
     /// Encodes the packet body and writes it to a writer.
     fn encode(&self, dst: &mut Write) -> io::Result<()>;
     /// Decodes the packet body from a reader.
     fn decode(src: &mut Read, len: usize) -> io::Result<Self>;
+
+    /// The length of the packet's fields, in bytes.
+    ///
+    /// The default implementation encodes the entire packet and can panic when encoding fails.
+    fn len(&self) -> usize {
+        let mut buf = vec![];
+        self.encode(&mut buf).ok().expect("tried to get the length of a malformed packet");
+        buf.len()
+    }
 
     /// Writes a full packet to a writer, including length and packet ID.
     ///
@@ -53,10 +64,12 @@ macro_rules! packet {
             $(pub $fname: <$fty as Protocol>::Clean),*
         }
 
-        impl Packet for $name {
+        impl PacketBase for $name {
             #[allow(unused_variables)]
             fn id(&self) -> i32 { $id }
+        }
 
+        impl Packet for $name {
             fn len(&self) -> usize {
                 0 $(+ <$fty as Protocol>::proto_len(&self.$fname) as usize)*
             }
@@ -79,10 +92,12 @@ macro_rules! packet {
         #[derive(Debug)]
         pub struct $name;
 
-        impl Packet for $name {
+        impl PacketBase for $name {
             #[allow(unused_variables)]
             fn id(&self) -> i32 { $id }
+        }
 
+        impl Packet for $name {
             #[allow(unused_variables)]
             fn len(&self) -> usize { 0 }
 
@@ -98,24 +113,17 @@ macro_rules! packet {
         }
     };
     // Custom encode/decode packets
-    ($name:ident ($id:expr) { $($fname:ident: $fty:ty),+; encode $encode:block; decode $decode:block; }) => {
+    ($name:ident ($id:expr) { $($fname:ident: $fty:ty),+; $impl_packet:item }) => {
         pub struct $name {
             $(pub $fname: $fty),*
         }
 
-        impl Packet for $name {
+        impl PacketBase for $name {
             #[allow(unused_variables)]
             fn id(&self) -> i32 { $id }
-
-            fn len(&self) -> usize {
-                let mut buf = vec![];
-                self.encode(&mut buf);
-                buf.len()
-            }
-
-            fn encode(&self, mut dst: &mut Write) -> io::Result<()> $encode
-            fn decode(mut src: &mut Read, len: usize) -> io::Result<$name> $decode
         }
+
+        $impl_packet
     }
 }
 
@@ -125,7 +133,7 @@ macro_rules! packets {
             pub mod $state_mod {
                 pub mod clientbound {
                     #![allow(unused_imports)]
-                    use packet::{BlockChangeRecord, ExplosionOffset, Packet, Protocol, Stat, State};
+                    use packet::{BlockChangeRecord, ExplosionOffset, Packet, PacketBase, Protocol, Stat, State};
                     use types::{Arr, Nbt, Slot, Var};
 
                     use std::io;
@@ -142,7 +150,7 @@ macro_rules! packets {
 
                 pub mod serverbound {
                     #![allow(unused_imports)]
-                    use packet::{BlockChangeRecord, ExplosionOffset, Packet, Protocol, Stat, State};
+                    use packet::{BlockChangeRecord, ExplosionOffset, Packet, PacketBase, Protocol, Stat, State};
                     use types::{Arr, Nbt, Slot, Var};
 
                     use std::io;
@@ -421,19 +429,19 @@ packets! {
             0x1E => RemoveEntityEffect { entity_id: Var<i32>, effect_id: i8 }
             0x1F => SetExperience { xp_bar: f32, level: Var<i32>, xp_total: Var<i32> }
             // 0x20 => EntityProperties { entity_id: Var<i32>, properties: Arr<i32, Property> }
-            // 0x21 => ChunkData { chunk_x: i32, chunk_z: i32, ground_up_continuous: bool, mask: u16, chunk_data: Chunk; encode { ... }; decode { ... }; } // chunk_data is length-prefixed and may or may not represent an entire chunk column
+            // 0x21 => ChunkData { chunk_x: i32, chunk_z: i32, ground_up_continuous: bool, mask: u16, chunk_data: Chunk; impl Packet for ChunkData { ... } } // chunk_data is length-prefixed and may or may not represent an entire chunk column
             0x22 => MultiBlockChange { chunk_x: i32, chunk_z: i32, records: Arr<Var<i32>, BlockChangeRecord> }
             0x23 => BlockChange { location: i64, block_id: Var<i32> }
             0x24 => BlockAction { location: i64, byte1: u8, byte2: u8, block_type: Var<i32> }
             0x25 => BlockBreakAnimation { entity_id: Var<i32>, location: i64, destroy_stage: i8 }
-            // 0x26 => MapChunkBulk { sky_light_sent: bool, chunks: Vec<Chunk>; encode { ... }; decode { ... }; } // PROBLEM: chunks is encoded as two arrays, the first one specifying which sections of each chunk column are empty
+            // 0x26 => MapChunkBulk { sky_light_sent: bool, chunks: Vec<Chunk>; impl Packet for MapChunkBulk { ... } } // PROBLEM: chunks is encoded as two arrays, the first one specifying which sections of each chunk column are empty
             0x27 => Explosion { x: f32, y: f32, z: f32, radius: f32, records: Arr<i32, ExplosionOffset>, player_motion_x: f32, player_motion_y: f32, player_motion_z: f32 }
             0x28 => Effect { effect_id: i32, location: i64, data: i32, disable_relative_volume: bool }
             0x29 => SoundEffect { name: String, x: i32, y: i32, z: i32, volume: f32, pitch: u8 }
-            // 0x2a => Particle { particle_id: i32, long_distance: bool, x: f32, y: f32, z: f32, offset_x: f32, offset_y: f32, offset_z: f32, particle_data: f32, particle_count: i32, data: Vec<i32>; encode { ... }; decode { ... }; } // PROBLEM: length of data depends on particle_id
+            // 0x2a => Particle { particle_id: i32, long_distance: bool, x: f32, y: f32, z: f32, offset_x: f32, offset_y: f32, offset_z: f32, particle_data: f32, particle_count: i32, data: Vec<i32>; impl Packet for Particle { ... } } // PROBLEM: length of data depends on particle_id
             0x2b => ChangeGameState { reason: u8, value: f32 }
             0x2c => SpawnGlobalEntity { entity_id: Var<i32>, type_: i8, x: i32, y: i32, z: i32 }
-            // 0x2d => OpenWindow { window_id: u8, window_type: String, window_title: Chat, slots: u8, entity_id: Option<i32>; encode { ... }; decode { ... }; } // PROBLEM: entity_id depends on window_type
+            // 0x2d => OpenWindow { window_id: u8, window_type: String, window_title: Chat, slots: u8, entity_id: Option<i32>; impl Packet for OpenWindow { ... } } // PROBLEM: entity_id depends on window_type
             0x2e => CloseWindow { window_id: u8 }
             0x2f => SetSlot { window_id: u8, slot: i16, data: Option<Slot> }
             0x30 => WindowItems { window_id: u8, slots: Arr<i16, Option<Slot>> }
@@ -441,17 +449,17 @@ packets! {
             0x32 => ConfirmTransaction { window_id: u8, action_number: i16, accepted: bool }
             // 0x33 => UpdateSign { location: i64, line0: Chat, line1: Chat, line2: Chat, line3: Chat }
             // 0x34 => UpdateMap { map_id: Var<i32>, scale: i8, icons: Arr<Var<i32>, MapIcon>, data: MapData } // MapData is a quirky format holding optional pixel data for an arbitrary rectangle on the map
-            // 0x35 => UpdateBlockEntity { location: i64, action: u8, nbt_data: Nbt; encode { ... }; decode { ... }; } // PROBLEM: nbt_data is omitted entirely if it encodes an empty NBT tag
+            // 0x35 => UpdateBlockEntity { location: i64, action: u8, nbt_data: Nbt; impl Packet for UpdateBlockEntity { ... } } // PROBLEM: nbt_data is omitted entirely if it encodes an empty NBT tag
             0x36 => SignEditorOpen { location: i64 }
             0x37 => Statistics { stats: Arr<Var<i32>, Stat> }
-            // 0x38 => UpdatePlayerList { action: Var<i32>, players: Arr<Var<i32>, PlayerListItem>; encode { ... }; decode { ... }; } // PROBLEM: suructure of `players` elements depends on `action`
+            // 0x38 => UpdatePlayerList { action: Var<i32>, players: Arr<Var<i32>, PlayerListItem>; impl Packet for UpdatePlayerList { ... } } // PROBLEM: suructure of `players` elements depends on `action`
             0x39 => PlayerAbilities { flags: i8, flying_speed: f32, walking_speed: f32 }
             0x3a => TabComplete { matches: Arr<Var<i32>, String> }
             // 0x3b => ScoreboardObjective { objective_name: String, mode: ObjectiveAction }
             // 0x3c => UpdateScore { score_name: String, action: ScoreAction }
             0x3d => DisplayScoreboard { position: i8, score_name: String }
             // 0x3e => UpdateTeam { team_name: String, action: TeamAction }
-            // 0x3f => PluginMessage { channel: String, data: Vec<u8>; encode { ... }; decode { ... }; } // PROBLEM: length of `data` comes from packet length
+            // 0x3f => PluginMessage { channel: String, data: Vec<u8>; impl Packet for PluginMessage { ... } } // PROBLEM: length of `data` comes from packet length
             // 0x40 => Disconnect { reason: Chat }
             0x41 => ServerDifficulty { difficulty: u8 }
             // 0x42 => PlayCombatEvent { event: CombatEvent }
@@ -487,7 +495,7 @@ packets! {
             0x14 => TabComplete { text: String, looking_at: Option<i64> }
             0x15 => ClientSettings { locale: String, view_distance: i8, chat_mode: i8, chat_colors: bool, displayed_skin_parts: u8 }
             0x16 => ClientStatus { action_id: Var<i32> }
-            // 0x17 => PluginMessage { channel: String, data: Vec<u8>; encode { ... }; decode { ... }; } // PROBLEM: length of `data` comes from packet length
+            // 0x17 => PluginMessage { channel: String, data: Vec<u8>; impl Packet for PluginMessage { ... } } // PROBLEM: length of `data` comes from packet length
             0x18 => Spectate { target_player: Uuid }
             0x19 => ResourcePackStatus { hash: String, result: Var<i32> }
         }
@@ -506,7 +514,7 @@ packets! {
         clientbound {
             // 0x00 => Disconnect { reason: Chat }
             0x01 => EncryptionRequest { server_id: String, pubkey: Arr<Var<i32>, u8>, verify_token: Arr<Var<i32>, u8> }
-            // 0x02 => LoginSuccess { uuid: Uuid, username: String; encode { ... }; decode { ... }; } // NOTE: uuid field is encoded as a string!
+            // 0x02 => LoginSuccess { uuid: Uuid, username: String; impl Packet for LoginSuccess { ... } } // NOTE: uuid field is encoded as a string!
             0x03 => SetCompression { threshold: Var<i32> }
         }
         serverbound {
