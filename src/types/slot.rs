@@ -6,6 +6,7 @@ use std::io::prelude::*;
 use packet::Protocol;
 use types::Nbt;
 
+#[derive(Debug)]
 pub struct Slot {
     id: u16,
     count: u8,

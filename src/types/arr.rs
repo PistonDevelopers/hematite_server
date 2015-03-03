@@ -1,10 +1,10 @@
 //! Minecraft protocol length-prefixed array data type
 
+use std::io;
+use std::io::prelude::*;
 use std::iter::{ AdditiveIterator, FromIterator };
 use std::marker::PhantomData;
 use std::num::{ NumCast, ToPrimitive };
-use std::io;
-use std::io::prelude::*;
 
 use packet::Protocol;
 
@@ -41,13 +41,13 @@ mod tests {
     use std::io;
 
     use packet::Protocol;
-    use types::VarInt;
+    use types::Var;
 
     #[test]
     fn arr_encode_i8_varint() {
         let mut dst = Vec::new();
         let value = vec![0i32, -1i32];
-        <Arr<i8, VarInt> as Protocol>::proto_encode(&value, &mut dst).unwrap();
+        <Arr<i8, Var<i32>> as Protocol>::proto_encode(&value, &mut dst).unwrap();
         let bytes = vec![2, 0, 0xff, 0xff, 0xff, 0xff, 0xf];
         assert_eq!(&dst, &bytes);
     }
@@ -57,7 +57,7 @@ mod tests {
         let bytes = vec![2, 0, 0xff, 0xff, 0xff, 0xff, 0xf];
         let arr = vec![0i32, -1i32];
         let mut src = io::Cursor::new(bytes);
-        let value = <Arr<i8, VarInt> as Protocol>::proto_decode(&mut src).unwrap();
+        let value = <Arr<i8, Var<i32>> as Protocol>::proto_decode(&mut src).unwrap();
         assert_eq!(arr, value);
     }
 
