@@ -21,8 +21,6 @@ pub trait Protocol {
 trait PacketBase {
     /// The packet ID.
     fn id(&self) -> i32;
-    /// The length of the packet's fields, in bytes.
-    fn len(&self) -> usize;
 }
 
 /// A trait for encoding/decoding the body of a single packet type.
@@ -31,6 +29,15 @@ trait Packet: PacketBase {
     fn encode(&self, dst: &mut Write) -> io::Result<()>;
     /// Decodes the packet body from a reader.
     fn decode(src: &mut Read, len: usize) -> io::Result<Self>;
+
+    /// The length of the packet's fields, in bytes.
+    ///
+    /// The default implementation encodes the entire packet and can panic when encoding fails.
+    fn len(&self) -> usize {
+        let mut buf = vec![];
+        self.encode(&mut buf).ok().expect("tried to get the length of a malformed packet");
+        buf.len()
+    }
 
     /// Writes a full packet to a writer, including length and packet ID.
     ///
@@ -60,13 +67,13 @@ macro_rules! packet {
         impl PacketBase for $name {
             #[allow(unused_variables)]
             fn id(&self) -> i32 { $id }
-
-            fn len(&self) -> usize {
-                0 $(+ <$fty as Protocol>::proto_len(&self.$fname) as usize)*
-            }
         }
 
         impl Packet for $name {
+            fn len(&self) -> usize {
+                0 $(+ <$fty as Protocol>::proto_len(&self.$fname) as usize)*
+            }
+
             fn encode(&self, mut dst: &mut Write) -> io::Result<()> {
                 $(try!(<$fty as Protocol>::proto_encode(&self.$fname, dst));)*
                 Ok(())
@@ -88,12 +95,12 @@ macro_rules! packet {
         impl PacketBase for $name {
             #[allow(unused_variables)]
             fn id(&self) -> i32 { $id }
-
-            #[allow(unused_variables)]
-            fn len(&self) -> usize { 0 }
         }
 
         impl Packet for $name {
+            #[allow(unused_variables)]
+            fn len(&self) -> usize { 0 }
+
             #[allow(unused_variables)]
             fn encode(&self, dst: &mut Write) -> io::Result<()> {
                 Ok(())
@@ -114,12 +121,6 @@ macro_rules! packet {
         impl PacketBase for $name {
             #[allow(unused_variables)]
             fn id(&self) -> i32 { $id }
-
-            fn len(&self) -> usize {
-                let mut buf = vec![];
-                self.encode(&mut buf);
-                buf.len()
-            }
         }
 
         $impl_packet
