@@ -19,9 +19,25 @@ pub trait Protocol {
 
 /// A trait for encoding/decoding the body of a single packet type.
 pub trait Packet {
+    /// The packet ID.
+    fn id(&self) -> i32;
+    /// The length of the packet's fields, in bytes.
     fn len(&self) -> usize;
+    /// Encodes the packet body and writes it to a writer.
     fn encode(&self, dst: &mut Write) -> io::Result<()>;
+    /// Decodes the packet body from a reader.
     fn decode(src: &mut Read, len: usize) -> io::Result<Self>;
+
+    /// Writes a full packet to a writer, including length and packet ID.
+    ///
+    /// **TODO:** add support for compression.
+    fn write(&self, dst: &mut Write) -> io::Result<()> {
+        let len = <Var<i32> as Protocol>::proto_len(&self.id()) + self.len();
+        try!(<Var<i32> as Protocol>::proto_encode(&(len as i32), dst));
+        try!(<Var<i32> as Protocol>::proto_encode(&self.id(), dst));
+        try!(self.encode(dst));
+        Ok(())
+    }
 }
 
 pub enum Direction {
@@ -38,6 +54,9 @@ macro_rules! packet {
         }
 
         impl Packet for $name {
+            #[allow(unused_variables)]
+            fn id(&self) -> i32 { $id }
+
             fn len(&self) -> usize {
                 0 $(+ <$fty as Protocol>::proto_len(&self.$fname) as usize)*
             }
@@ -62,6 +81,9 @@ macro_rules! packet {
 
         impl Packet for $name {
             #[allow(unused_variables)]
+            fn id(&self) -> i32 { $id }
+
+            #[allow(unused_variables)]
             fn len(&self) -> usize { 0 }
 
             #[allow(unused_variables)]
@@ -82,6 +104,9 @@ macro_rules! packet {
         }
 
         impl Packet for $name {
+            #[allow(unused_variables)]
+            fn id(&self) -> i32 { $id }
+
             fn len(&self) -> usize {
                 let mut buf = vec![];
                 self.encode(&mut buf);
