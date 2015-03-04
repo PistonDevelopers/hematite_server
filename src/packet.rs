@@ -133,8 +133,8 @@ macro_rules! packets {
             pub mod $state_mod {
                 pub mod clientbound {
                     #![allow(unused_imports)]
-                    use packet::{BlockChangeRecord, ExplosionOffset, Packet, PacketBase, Protocol, Stat, State};
-                    use types::{Arr, Nbt, Slot, Var};
+                    use packet::{BlockChangeRecord, Packet, PacketBase, Protocol, Stat, State};
+                    use types::{Arr, BlockPos, Nbt, Slot, Var};
 
                     use std::io;
                     use std::io::prelude::*;
@@ -151,8 +151,8 @@ macro_rules! packets {
 
                 pub mod serverbound {
                     #![allow(unused_imports)]
-                    use packet::{BlockChangeRecord, ExplosionOffset, Packet, PacketBase, Protocol, Stat, State};
-                    use types::{Arr, Nbt, Slot, Var};
+                    use packet::{BlockChangeRecord, Packet, PacketBase, Protocol, Stat, State};
+                    use types::{Arr, BlockPos, Nbt, Slot, Var};
 
                     use std::io;
                     use std::io::prelude::*;
@@ -377,12 +377,6 @@ proto_structs! {
         block_id: Var<i32>
     }
 
-    ExplosionOffset {
-        x: i8,
-        y: i8,
-        z: i8
-    }
-
     Stat {
         name: String,
         value: Var<i32>
@@ -403,26 +397,26 @@ packets! {
             // 0x02 => ChatMessage { data: Chat, position: i8 }
             0x03 => TimeUpdate { world_age: i64, time_of_day: i64 }
             0x04 => EntityEquipment { entity_id: Var<i32>, slot: i16, item: Option<Slot> }
-            0x05 => WorldSpawn { location: i64 }
+            0x05 => WorldSpawn { location: BlockPos }
             0x06 => UpdateHealth { health: f32, food: Var<i32>, saturation: f32 }
             0x07 => Respawn { dimension: i32, difficulty: u8, gamemode: u8, level_type: String }
-            0x08 => PlayerPositionAndLook { x: f64, y: f64, z: f64, yaw: f32, pitch: f32, flags: i8 }
+            0x08 => PlayerPositionAndLook { position: [f64; 3], yaw: f32, pitch: f32, flags: i8 }
             0x09 => HeldItemChange { slot: i8 }
-            0x0a => UseBed { entity_id: Var<i32>, location: i64 }
+            0x0a => UseBed { entity_id: Var<i32>, location: BlockPos }
             0x0b => Animation { entity_id: Var<i32>, animation: u8 }
-            // 0x0c => SpawnPlayer { entity_id: Var<i32>, player_uuid: Uuid, x: i32, y: i32, z: i32, yaw: u8, pitch: u8, current_item: i16, metadata: Metadata }
+            // 0x0c => SpawnPlayer { entity_id: Var<i32>, player_uuid: Uuid, position: [i32; 3], yaw: u8, pitch: u8, current_item: i16, metadata: Metadata }
             0x0d => CollectItem { collected_eid: Var<i32>, collector_eid: Var<i32> }
-            // 0x0e => SpawnObject { entity_id: Var<i32>, type_: i8, x: i32, y: i32, z: i32, pitch: u8, yaw: u8, data: ObjectData }
-            // 0x0f => SpawnMob { entity_id: Var<i32>, type_: u8, x: i32, y: i32, z: i32, yaw: u8, pitch: u8, head_pitch: u8, velocity_x: i16, velocity_y: i16, velocity_z: i16, metadata: Metadata }
-            0x10 => SpawnPainting { entity_id: Var<i32>, title: String, location: i64, direction: u8 }
-            0x11 => SpawnExperienceOrb { entity_id: Var<i32>, x: i32, y: i32, z: i32, count: i16 }
-            0x12 => EntityVelocity { entity_id: Var<i32>, velocity_x: i16, velocity_y: i16, velocity_z: i16 }
+            // 0x0e => SpawnObject { entity_id: Var<i32>, type_: i8, position: [i32; 3], pitch: u8, yaw: u8, data: ObjectData }
+            // 0x0f => SpawnMob { entity_id: Var<i32>, type_: u8, position: [i32; 3], yaw: u8, pitch: u8, head_pitch: u8, velocity: [i16; 3], metadata: Metadata }
+            0x10 => SpawnPainting { entity_id: Var<i32>, title: String, location: BlockPos, direction: u8 }
+            0x11 => SpawnExperienceOrb { entity_id: Var<i32>, position: [i32; 3], count: i16 }
+            0x12 => EntityVelocity { entity_id: Var<i32>, velocity: [i16; 3] }
             0x13 => DestroyEntities { entity_ids: Arr<Var<i32>, Var<i32>> }
             0x14 => EntityIdle { entity_id: Var<i32> }
-            0x15 => EntityRelativeMove { entity_id: Var<i32>, delta_x: i8, delta_y: i8, delta_z: i8, on_ground: bool }
+            0x15 => EntityRelativeMove { entity_id: Var<i32>, delta: [i8; 3], on_ground: bool }
             0x16 => EntityLook { entity_id: Var<i32>, yaw: u8, pitch: u8, on_ground: bool }
-            0x17 => EntityLookAndRelativeMove { entity_id: Var<i32>, delta_x: i8, delta_y: i8, delta_z: i8, yaw: u8, pitch: u8, on_ground: bool }
-            0x18 => EntityTeleport { entity_id: Var<i32>, x: i32, y: i32, z: i32, yaw: u8, pitch: u8, on_ground: bool }
+            0x17 => EntityLookAndRelativeMove { entity_id: Var<i32>, delta: [i8; 3], yaw: u8, pitch: u8, on_ground: bool }
+            0x18 => EntityTeleport { entity_id: Var<i32>, position: [i32; 3], yaw: u8, pitch: u8, on_ground: bool }
             0x19 => EntityHeadLook { entity_id: Var<i32>, head_yaw: u8 }
             0x1A => EntityStatus { entity_id: i32, entity_status: i8 }
             0x1B => AttachEntity { riding_eid: i32, vehicle_eid: i32, leash: bool }
@@ -433,26 +427,26 @@ packets! {
             // 0x20 => EntityProperties { entity_id: Var<i32>, properties: Arr<i32, Property> }
             // 0x21 => ChunkData { chunk_x: i32, chunk_z: i32, ground_up_continuous: bool, mask: u16, chunk_data: Chunk; impl Packet for ChunkData { ... } } // chunk_data is length-prefixed and may or may not represent an entire chunk column
             0x22 => MultiBlockChange { chunk_x: i32, chunk_z: i32, records: Arr<Var<i32>, BlockChangeRecord> }
-            0x23 => BlockChange { location: i64, block_id: Var<i32> }
-            0x24 => BlockAction { location: i64, byte1: u8, byte2: u8, block_type: Var<i32> }
-            0x25 => BlockBreakAnimation { entity_id: Var<i32>, location: i64, destroy_stage: i8 }
+            0x23 => BlockChange { location: BlockPos, block_id: Var<i32> }
+            0x24 => BlockAction { location: BlockPos, byte1: u8, byte2: u8, block_type: Var<i32> }
+            0x25 => BlockBreakAnimation { entity_id: Var<i32>, location: BlockPos, destroy_stage: i8 }
             // 0x26 => MapChunkBulk { sky_light_sent: bool, chunks: Vec<Chunk>; impl Packet for MapChunkBulk { ... } } // PROBLEM: chunks is encoded as two arrays, the first one specifying which sections of each chunk column are empty
-            0x27 => Explosion { x: f32, y: f32, z: f32, radius: f32, records: Arr<i32, ExplosionOffset>, player_motion_x: f32, player_motion_y: f32, player_motion_z: f32 }
-            0x28 => Effect { effect_id: i32, location: i64, data: i32, disable_relative_volume: bool }
-            0x29 => SoundEffect { name: String, x: i32, y: i32, z: i32, volume: f32, pitch: u8 }
-            // 0x2a => Particle { particle_id: i32, long_distance: bool, x: f32, y: f32, z: f32, offset_x: f32, offset_y: f32, offset_z: f32, particle_data: f32, particle_count: i32, data: Vec<i32>; impl Packet for Particle { ... } } // PROBLEM: length of data depends on particle_id
+            0x27 => Explosion { position: [f32; 3], radius: f32, records: Arr<i32, [i8; 3]>, player_motion: [f32; 3] }
+            0x28 => Effect { effect_id: i32, location: BlockPos, data: i32, disable_relative_volume: bool }
+            0x29 => SoundEffect { name: String, position: [i32; 3], volume: f32, pitch: u8 }
+            // 0x2a => Particle { particle_id: i32, long_distance: bool, position: [f32; 3], offset: [f32; 3], particle_data: f32, particle_count: i32, data: Vec<i32>; impl Packet for Particle { ... } } // PROBLEM: length of data depends on particle_id
             0x2b => ChangeGameState { reason: u8, value: f32 }
-            0x2c => SpawnGlobalEntity { entity_id: Var<i32>, type_: i8, x: i32, y: i32, z: i32 }
+            0x2c => SpawnGlobalEntity { entity_id: Var<i32>, type_: i8, position: [i32; 3] }
             // 0x2d => OpenWindow { window_id: u8, window_type: String, window_title: Chat, slots: u8, entity_id: Option<i32>; impl Packet for OpenWindow { ... } } // PROBLEM: entity_id depends on window_type
             0x2e => CloseWindow { window_id: u8 }
             0x2f => SetSlot { window_id: u8, slot: i16, data: Option<Slot> }
             0x30 => WindowItems { window_id: u8, slots: Arr<i16, Option<Slot>> }
             0x31 => WindowProperty { window_id: u8, property: i16, value: i16 }
             0x32 => ConfirmTransaction { window_id: u8, action_number: i16, accepted: bool }
-            // 0x33 => UpdateSign { location: i64, line0: Chat, line1: Chat, line2: Chat, line3: Chat }
+            // 0x33 => UpdateSign { location: BlockPos, line0: Chat, line1: Chat, line2: Chat, line3: Chat }
             // 0x34 => UpdateMap { map_id: Var<i32>, scale: i8, icons: Arr<Var<i32>, MapIcon>, data: MapData } // MapData is a quirky format holding optional pixel data for an arbitrary rectangle on the map
-            // 0x35 => UpdateBlockEntity { location: i64, action: u8, nbt_data: Nbt; impl Packet for UpdateBlockEntity { ... } } // PROBLEM: nbt_data is omitted entirely if it encodes an empty NBT tag
-            0x36 => SignEditorOpen { location: i64 }
+            // 0x35 => UpdateBlockEntity { location: [i32; 3], action: u8, nbt_data: Nbt; impl Packet for UpdateBlockEntity { ... } } // PROBLEM: nbt_data is omitted entirely if it encodes an empty NBT tag
+            0x36 => SignEditorOpen { location: BlockPos }
             0x37 => Statistics { stats: Arr<Var<i32>, Stat> }
             // 0x38 => UpdatePlayerList { action: Var<i32>, players: Arr<Var<i32>, PlayerListItem>; impl Packet for UpdatePlayerList { ... } } // PROBLEM: suructure of `players` elements depends on `action`
             0x39 => PlayerAbilities { flags: i8, flying_speed: f32, walking_speed: f32 }
@@ -492,11 +486,11 @@ packets! {
             0x01 => ChatMessage { message: String }
             // 0x02 => UseEntity { target_eid: i32, use_type: EntityUseAction }
             0x03 => PlayerIdle { on_ground: bool }
-            0x04 => PlayerPosition { x: f64, y: f64, z: f64, on_ground: bool }
+            0x04 => PlayerPosition { position: [f64; 3], on_ground: bool }
             0x05 => PlayerLook { yaw: f32, pitch: f32, on_ground: bool }
-            0x06 => PlayerPositionAndLook { x: f64, y: f64, z: f64, yaw: f32, pitch: f32, on_ground: bool }
-            0x07 => PlayerDigging { status: i8, location: i64, face: i8 }
-            0x08 => PlayerBlockPlacement { location: i64, direction: i8, held_item: Option<Slot>, cursor_x: i8, cursor_y: i8, cursor_z: i8 }
+            0x06 => PlayerPositionAndLook { position: [f64; 3], yaw: f32, pitch: f32, on_ground: bool }
+            0x07 => PlayerDigging { status: i8, location: BlockPos, face: i8 }
+            0x08 => PlayerBlockPlacement { location: BlockPos, direction: i8, held_item: Option<Slot>, cursor: [i8; 3] }
             0x09 => HeldItemChange { slot: i16 }
             0x0a => Animation {}
             0x0b => EntityAction { entity_id: Var<i32>, action_id: Var<i32>, jump_boost: Var<i32> }
@@ -506,7 +500,7 @@ packets! {
             0x0f => ConfirmTransaction { window_id: u8, action_number: i16, accepted: bool }
             0x10 => CreativeInventoryAction { slot: i16, clicked_item: Option<Slot> }
             0x11 => EnchantItem { window_id: u8, enchantment: i8 }
-            // 0x12 => UpdateSign { location: i64, line0: Chat, line1: Chat, line2: Chat, line3: Chat }
+            // 0x12 => UpdateSign { location: BlockPos, line0: Chat, line1: Chat, line2: Chat, line3: Chat }
             0x13 => PlayerAbilities { flags: i8, flying_speed: f32, walking_speed: f32 }
             0x14 => TabComplete { text: String, looking_at: Option<i64> }
             0x15 => ClientSettings { locale: String, view_distance: i8, chat_mode: i8, chat_colors: bool, displayed_skin_parts: u8 }
