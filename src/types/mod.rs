@@ -1,5 +1,6 @@
 mod arr;
 mod nbt;
+mod pos;
 mod slot;
 mod string;
 mod uuid;
@@ -7,5 +8,6 @@ mod varnum;
 
 pub use self::arr::Arr;
 pub use self::nbt::Nbt;
+pub use self::pos::BlockPos;
 pub use self::slot::Slot;
 pub use self::varnum::Var;
