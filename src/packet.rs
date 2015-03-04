@@ -133,7 +133,7 @@ macro_rules! packets {
             pub mod $state_mod {
                 pub mod clientbound {
                     #![allow(unused_imports)]
-                    use packet::{BlockChangeRecord, ExplosionOffset, Packet, PacketBase, Protocol, Stat, State};
+                    use packet::{BlockChangeRecord, Packet, PacketBase, Protocol, Stat, State};
                     use types::{Arr, BlockPos, Nbt, Slot, Var};
 
                     use std::io;
@@ -151,7 +151,7 @@ macro_rules! packets {
 
                 pub mod serverbound {
                     #![allow(unused_imports)]
-                    use packet::{BlockChangeRecord, ExplosionOffset, Packet, PacketBase, Protocol, Stat, State};
+                    use packet::{BlockChangeRecord, Packet, PacketBase, Protocol, Stat, State};
                     use types::{Arr, BlockPos, Nbt, Slot, Var};
 
                     use std::io;
@@ -377,12 +377,6 @@ proto_structs! {
         block_id: Var<i32>
     }
 
-    ExplosionOffset {
-        x: i8,
-        y: i8,
-        z: i8
-    }
-
     Stat {
         name: String,
         value: Var<i32>
@@ -437,7 +431,7 @@ packets! {
             0x24 => BlockAction { location: BlockPos, byte1: u8, byte2: u8, block_type: Var<i32> }
             0x25 => BlockBreakAnimation { entity_id: Var<i32>, location: BlockPos, destroy_stage: i8 }
             // 0x26 => MapChunkBulk { sky_light_sent: bool, chunks: Vec<Chunk>; impl Packet for MapChunkBulk { ... } } // PROBLEM: chunks is encoded as two arrays, the first one specifying which sections of each chunk column are empty
-            0x27 => Explosion { position: [f32; 3], radius: f32, records: Arr<i32, ExplosionOffset>, player_motion: [f32; 3] }
+            0x27 => Explosion { position: [f32; 3], radius: f32, records: Arr<i32, [i8; 3]>, player_motion: [f32; 3] }
             0x28 => Effect { effect_id: i32, location: BlockPos, data: i32, disable_relative_volume: bool }
             0x29 => SoundEffect { name: String, position: [i32; 3], volume: f32, pitch: u8 }
             // 0x2a => Particle { particle_id: i32, long_distance: bool, position: [f32; 3], offset: [f32; 3], particle_data: f32, particle_count: i32, data: Vec<i32>; impl Packet for Particle { ... } } // PROBLEM: length of data depends on particle_id
