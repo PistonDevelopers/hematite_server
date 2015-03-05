@@ -426,6 +426,7 @@ mod tests {
 
     use std::collections::HashMap;
     use std::io;
+    use std::io::ErrorKind::InvalidInput;
 
     use packet::Protocol;
 
@@ -537,5 +538,20 @@ mod tests {
         let mut dst = Vec::new();
         <Nbt as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
+    }
+
+    #[test]
+    fn nbt_no_root() {
+        let bytes = vec![0x00];
+        // Will fail, because the root is not a compound.
+        assert!(Nbt::from_reader(&mut io::Cursor::new(bytes.as_slice())).is_err());
+    }
+
+    #[test]
+    fn nbt_bad_compression() {
+        // These aren't in the zlib or gzip format, so they'll fail.
+        let bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        assert!(Nbt::from_gzip(bytes.as_slice()).is_err());
+        assert!(Nbt::from_zlib(bytes.as_slice()).is_err());
     }
 }
