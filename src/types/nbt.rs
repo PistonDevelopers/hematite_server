@@ -5,6 +5,7 @@ use byteorder::{BigEndian, WriteBytesExt};
 use std::collections::HashMap;
 use std::io;
 use std::io::prelude::*;
+use std::io::ErrorKind::InvalidInput;
 use std::iter::AdditiveIterator;
 use std::ops::Index;
 
@@ -57,15 +58,33 @@ impl Nbt {
     pub fn from_reader(src: &mut Read) -> io::Result<Nbt> {
         <Nbt as Protocol>::proto_decode(src)
     }
+
+    /// Extracts an `Nbt` value from compressed gzip data.
     pub fn from_gzip(data: &[u8]) -> io::Result<Nbt> {
-        assert_eq!(&data[..4], [0x1f, 0x8b, 0x08, 0x00].as_slice());
-        let data = inflate_bytes(&data[10..]).expect("inflate failed");
+        // Check for the correct gzip header.
+        if &data[..4] != [0x1f, 0x8b, 0x08, 0x00].as_slice() {
+            return Err(io::Error::new(InvalidInput, "invalid gzip file", None));
+        };
+        // flake::inflate_bytes returns None in case of failure; turn this into
+        // an io::Error instead.
+        let data = match inflate_bytes(&data[10..]) {
+            Some(v) => v,
+            None    => return Err(io::Error::new(InvalidInput, "invalid gzip file", None))
+        };
         Nbt::from_reader(&mut io::Cursor::new(data.as_slice()))
     }
+
+    /// Extracts an `Nbt` value from compressed zlib data.
     pub fn from_zlib(data: &[u8]) -> io::Result<Nbt> {
-        let data = inflate_bytes_zlib(data).expect("inflate failed");
+        // flake::inflate_bytes_zlib returns None in case of failure; turn this
+        // into an io::Error instead.
+        let data = match inflate_bytes_zlib(data) {
+            Some(v) => v,
+            None    => return Err(io::Error::new(InvalidInput, "invalid zlib file", None))
+        };
         Nbt::from_reader(&mut io::Cursor::new(data.as_slice()))
     }
+
     pub fn as_byte(&self) -> Option<i8> {
         match *self { Nbt::Byte(b) => Some(b), _ => None }
     }
@@ -116,8 +135,10 @@ impl Nbt {
         let len = try!(<u16 as Protocol>::proto_decode(src));
         if len == 0 { return Ok("".to_string()); }
         let bytes = try!(src.read_exact(len as usize));
-        let utf8_str = String::from_utf8(bytes).unwrap();
-        Ok(utf8_str)
+        match String::from_utf8(bytes) {
+            Ok(v)  => Ok(v),
+            Err(e) => Err(io::Error::new(InvalidInput, "string is not UTF-8", Some(format!("{}", e))))
+        }
     }
 
     fn write_i8_array(array: &Vec<i8>, dst: &mut Write) -> io::Result<()> {
@@ -198,7 +219,7 @@ impl Nbt {
                 0x09 => Nbt::List(try!(<List as Protocol>::proto_decode(src))),
                 0x0a => Nbt::Compound(try!(Nbt::read_compound(src))),
                 0x0b => Nbt::IntArray(try!(Nbt::read_i32_array(src))),
-                value => panic!("Invalid NBT tag value {}", value)
+                value => return Err(io::Error::new(InvalidInput, "invalid NBT tag", Some(format!("tag: {}", value))))
             };
             map.insert(key, value);
         }
@@ -268,7 +289,7 @@ impl Protocol for Nbt {
         match value {
             &Nbt::Compound(ref compound) => try!(Nbt::write_compound(compound, dst)),
             _ => {
-                return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid NBT file", Some(format!("root value must be NBT Compound"))));
+                return Err(io::Error::new(InvalidInput, "invalid NBT file", Some(format!("root value must be NBT Compound"))));
             }
         }
         Ok(())
@@ -278,7 +299,7 @@ impl Protocol for Nbt {
         // Read root compound
         let id = try!(<u8 as Protocol>::proto_decode(src));
         if id != 0x0a {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid NBT file", Some(format!("root value must be NBT Compound"))));
+            return Err(io::Error::new(InvalidInput, "invalid NBT file", Some(format!("root value must be NBT Compound"))));
         }
         try!(Nbt::read_str(src)); // compound name
         // Read root contents
@@ -394,7 +415,7 @@ impl Protocol for List {
                 }
                 Ok(List::IntArray(v))
             }
-            value => panic!("Unknown NBT tag value {}", value)
+            value => return Err(io::Error::new(InvalidInput, "invalid NBT tag", Some(format!("tag: {}", value))))
         }
     }
 }
