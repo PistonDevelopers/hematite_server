@@ -134,6 +134,7 @@ macro_rules! packets {
                 pub mod clientbound {
                     #![allow(unused_imports)]
                     use packet::{BlockChangeRecord, Packet, PacketBase, Protocol, Stat, State};
+                    use types::consts::*;
                     use types::{Arr, BlockPos, Nbt, Slot, Var};
 
                     use std::io;
@@ -152,6 +153,7 @@ macro_rules! packets {
                 pub mod serverbound {
                     #![allow(unused_imports)]
                     use packet::{BlockChangeRecord, Packet, PacketBase, Protocol, Stat, State};
+                    use types::consts::*;
                     use types::{Arr, BlockPos, Nbt, Slot, Var};
 
                     use std::io;
@@ -393,13 +395,13 @@ packets! {
     Play => play {
         clientbound {
             0x00 => KeepAlive { keep_alive_id: Var<i32> }
-            0x01 => JoinGame { entity_id: i32, gamemode: u8, dimension: i8, difficulty: u8, max_players: u8, level_type: String, reduced_debug_info: bool }
+            0x01 => JoinGame { entity_id: i32, gamemode: u8, dimension: Dimension, difficulty: u8, max_players: u8, level_type: String, reduced_debug_info: bool }
             // 0x02 => ChatMessage { data: Chat, position: i8 }
             0x03 => TimeUpdate { world_age: i64, time_of_day: i64 }
             0x04 => EntityEquipment { entity_id: Var<i32>, slot: i16, item: Option<Slot> }
             0x05 => WorldSpawn { location: BlockPos }
             0x06 => UpdateHealth { health: f32, food: Var<i32>, saturation: f32 }
-            0x07 => Respawn { dimension: i32, difficulty: u8, gamemode: u8, level_type: String }
+            0x07 => Respawn { dimension: Dimension, difficulty: u8, gamemode: u8, level_type: String }
             0x08 => PlayerPositionAndLook { position: [f64; 3], yaw: f32, pitch: f32, flags: i8 }
             0x09 => HeldItemChange { slot: i8 }
             0x0a => UseBed { entity_id: Var<i32>, location: BlockPos }
@@ -425,7 +427,7 @@ packets! {
             0x1E => RemoveEntityEffect { entity_id: Var<i32>, effect_id: i8 }
             0x1F => SetExperience { xp_bar: f32, level: Var<i32>, xp_total: Var<i32> }
             // 0x20 => EntityProperties { entity_id: Var<i32>, properties: Arr<i32, Property> }
-            // 0x21 => ChunkData { chunk_x: i32, chunk_z: i32, ground_up_continuous: bool, mask: u16, chunk_data: Chunk; impl Packet for ChunkData { ... } } // chunk_data is length-prefixed and may or may not represent an entire chunk column
+            0x21 => ChunkData { x: i32, z: i32, continuous: bool, mask: u16, chunk_data: Arr<Var<i32>, u8> }
             0x22 => MultiBlockChange { chunk_x: i32, chunk_z: i32, records: Arr<Var<i32>, BlockChangeRecord> }
             0x23 => BlockChange { location: BlockPos, block_id: Var<i32> }
             0x24 => BlockAction { location: BlockPos, byte1: u8, byte2: u8, block_type: Var<i32> }
