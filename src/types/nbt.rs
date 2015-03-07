@@ -238,8 +238,8 @@ impl NbtFile {
     }
 
     /// Extracts an `NbtFile` from an arbitrary interface to `io::Read`.
-    pub fn from_reader(src: &mut io::Read) -> io::Result<NbtFile> {
-        let header = try!(NbtValue::read_header(&mut *src));
+    pub fn from_reader(mut src: &mut io::Read) -> io::Result<NbtFile> {
+        let header = try!(NbtValue::read_header(src));
         // Although it would be possible to read NBT files composed of
         // arbitrary objects using the current API, by convention all files
         // have a top-level Compound.
@@ -247,7 +247,7 @@ impl NbtFile {
             return Err(io::Error::new(InvalidInput, "invalid NBT file",
                        Some(format!("root value must be a Compound (0x0a)"))));
         }
-        let content = try!(NbtValue::from_reader(header.0, &mut *src));
+        let content = try!(NbtValue::from_reader(header.0, src));
         Ok(NbtFile { title: header.1, content: content })
     }
 
