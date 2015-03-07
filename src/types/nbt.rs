@@ -319,59 +319,56 @@ mod tests {
 
     use std::collections::HashMap;
     use std::io;
-    use std::io::ErrorKind::InvalidInput;
 
     use packet::Protocol;
 
     #[test]
-    fn nbt_encode_decode() {
-        let mut c = HashMap::new();
-        c.insert("name".to_string(), Nbt::String("Herobrine".to_string()));
-        c.insert("health".to_string(), Nbt::Byte(100));
-        c.insert("food".to_string(), Nbt::Float(20.0));
-        c.insert("emeralds".to_string(), Nbt::Short(12345));
-        c.insert("timestamp".to_string(), Nbt::Int(1424778774));
-        let nbt = Nbt::Compound(c);
+    fn nbt_nonempty() {
+        let mut nbt = NbtFile::new("".to_string());
+        nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
+        nbt.insert("health".to_string(), NbtValue::Byte(100));
+        nbt.insert("food".to_string(), NbtValue::Float(20.0));
+        nbt.insert("emeralds".to_string(), NbtValue::Short(12345));
+        nbt.insert("timestamp".to_string(), NbtValue::Int(1424778774));
 
-        // let bytes = vec![
-        //     0x0a,
-        //         0x00, 0x00,
-        //         0x08,
-        //             0x00, 0x04,
-        //             0x6e, 0x61, 0x6d, 0x65,
-        //             0x00, 0x09,
-        //             0x48, 0x65, 0x72, 0x6f, 0x62, 0x72, 0x69, 0x6e, 0x65,
-        //         0x01,
-        //             0x00, 0x06,
-        //             0x68, 0x65, 0x61, 0x6c, 0x74, 0x68,
-        //             0x64,
-        //         0x05,
-        //             0x00, 0x04,
-        //             0x66, 0x6f, 0x6f, 0x64,
-        //             0x41, 0xa0, 0x00, 0x00,
-        //         0x02,
-        //             0x00, 0x08,
-        //             0x65, 0x6d, 0x65, 0x72, 0x61, 0x6c, 0x64, 0x73,
-        //             0x30, 0x39,
-        //         0x03,
-        //             0x00, 0x09,
-        //             0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70,
-        //             0x54, 0xec, 0x66, 0x16,
-        //     0x00
-        // ];
+        let bytes = vec![
+            0x0a,
+                0x00, 0x00,
+                0x08,
+                    0x00, 0x04,
+                    0x6e, 0x61, 0x6d, 0x65,
+                    0x00, 0x09,
+                    0x48, 0x65, 0x72, 0x6f, 0x62, 0x72, 0x69, 0x6e, 0x65,
+                0x01,
+                    0x00, 0x06,
+                    0x68, 0x65, 0x61, 0x6c, 0x74, 0x68,
+                    0x64,
+                0x05,
+                    0x00, 0x04,
+                    0x66, 0x6f, 0x6f, 0x64,
+                    0x41, 0xa0, 0x00, 0x00,
+                0x02,
+                    0x00, 0x08,
+                    0x65, 0x6d, 0x65, 0x72, 0x61, 0x6c, 0x64, 0x73,
+                    0x30, 0x39,
+                0x03,
+                    0x00, 0x09,
+                    0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70,
+                    0x54, 0xec, 0x66, 0x16,
+            0x00
+        ];
 
-        let mut dst = Vec::new();
-        <Nbt as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
-        // assert_eq!(&dst, &bytes);
-
-        let mut src = io::Cursor::new(dst);
-        let nbt2 = <Nbt as Protocol>::proto_decode(&mut src).unwrap();
-        assert_eq!(nbt2, nbt);
+        // We can only test if the decoded bytes match, since the HashMap does
+        // not guarantee order (and so encoding is likely to be different, but
+        // still correct).
+        let mut src = io::Cursor::new(bytes);
+        let file = <NbtFile as Protocol>::proto_decode(&mut src).unwrap();
+        assert_eq!(&file, &nbt);
     }
 
     #[test]
-    fn nbt_empty_compound() {
-        let nbt = Nbt::Compound(HashMap::new());
+    fn nbt_empty_nbtfile() {
+        let nbt = NbtFile::new("".to_string());
 
         let bytes = vec![
             0x0a,
@@ -380,17 +377,16 @@ mod tests {
         ];
 
         let mut dst = Vec::new();
-        <Nbt as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
+        <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
     }
 
     #[test]
     fn nbt_nested_compound() {
-        let mut c2 = HashMap::new();
-        c2.insert("test".to_string(), Nbt::Byte(123));
-        let mut c1 = HashMap::new();
-        c1.insert("inner".to_string(), Nbt::Compound(c2));
-        let nbt = Nbt::Compound(c1);
+        let mut inner = HashMap::new();
+        inner.insert("test".to_string(), NbtValue::Byte(123));
+        let mut nbt = NbtFile::new("".to_string());
+        nbt.insert("inner".to_string(), NbtValue::Compound(inner));
 
         let bytes = vec![
             0x0a,
@@ -407,15 +403,14 @@ mod tests {
         ];
 
         let mut dst = Vec::new();
-        <Nbt as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
+        <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
     }
 
     #[test]
     fn nbt_empty_list() {
-        let mut c = HashMap::new();
-        c.insert("list".to_string(), Nbt::List(List::Byte(Vec::new())));
-        let nbt = Nbt::Compound(c);
+        let mut nbt = NbtFile::new("".to_string());
+        nbt.insert("list".to_string(), NbtValue::List(Vec::new()));
 
         let bytes = vec![
             0x0a,
@@ -429,7 +424,7 @@ mod tests {
         ];
 
         let mut dst = Vec::new();
-        <Nbt as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
+        <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
     }
 
@@ -437,14 +432,14 @@ mod tests {
     fn nbt_no_root() {
         let bytes = vec![0x00];
         // Will fail, because the root is not a compound.
-        assert!(Nbt::from_reader(&mut io::Cursor::new(bytes.as_slice())).is_err());
+        assert!(NbtFile::from_reader(&mut io::Cursor::new(bytes.as_slice())).is_err());
     }
 
     #[test]
     fn nbt_bad_compression() {
         // These aren't in the zlib or gzip format, so they'll fail.
         let bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-        assert!(Nbt::from_gzip(bytes.as_slice()).is_err());
-        assert!(Nbt::from_zlib(bytes.as_slice()).is_err());
+        assert!(NbtFile::from_gzip(bytes.as_slice()).is_err());
+        assert!(NbtFile::from_zlib(bytes.as_slice()).is_err());
     }
 }
