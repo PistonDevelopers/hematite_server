@@ -4,14 +4,14 @@ use std::io;
 use std::io::prelude::*;
 
 use packet::Protocol;
-use types::Nbt;
+use types::NbtFile;
 
 #[derive(Debug)]
 pub struct Slot {
     id: u16,
     count: u8,
     damage: i16,
-    tag: Nbt
+    tag: NbtFile
 }
 
 impl Protocol for Option<Slot> {
@@ -19,7 +19,7 @@ impl Protocol for Option<Slot> {
 
     fn proto_len(value: &Option<Slot>) -> usize {
         match *value {
-            Some(ref slot) => 2 + 1 + 2 + <Nbt as Protocol>::proto_len(&slot.tag), // id, count, damage, tag
+            Some(ref slot) => 2 + 1 + 2 + <NbtFile as Protocol>::proto_len(&slot.tag), // id, count, damage, tag
             None => 2
         }
     }
@@ -30,7 +30,7 @@ impl Protocol for Option<Slot> {
                 try!(<i16 as Protocol>::proto_encode(&(id as i16), dst));
                 try!(<u8 as Protocol>::proto_encode(&count, dst));
                 try!(<i16 as Protocol>::proto_encode(&damage, dst));
-                try!(<Nbt as Protocol>::proto_encode(tag, dst));
+                try!(<NbtFile as Protocol>::proto_encode(tag, dst));
             }
             None => { try!(<i16 as Protocol>::proto_encode(&-1, dst)) }
         }
@@ -46,7 +46,7 @@ impl Protocol for Option<Slot> {
                 id: id as u16,
                 count: try!(<u8 as Protocol>::proto_decode(src)),
                 damage: try!(<i16 as Protocol>::proto_decode(src)),
-                tag: try!(<Nbt as Protocol>::proto_decode(src))
+                tag: try!(<NbtFile as Protocol>::proto_decode(src))
             })
         })
     }

@@ -136,6 +136,7 @@ macro_rules! packets {
                     use packet::{BlockChangeRecord, Packet, PacketBase, Protocol, Stat, State};
                     use types::consts::*;
                     use types::{Arr, BlockPos, Nbt, Slot, Var};
+                    use types::{Arr, BlockPos, NbtFile, Slot, Var};
 
                     use std::io;
                     use std::io::prelude::*;
@@ -154,7 +155,7 @@ macro_rules! packets {
                     #![allow(unused_imports)]
                     use packet::{BlockChangeRecord, Packet, PacketBase, Protocol, Stat, State};
                     use types::consts::*;
-                    use types::{Arr, BlockPos, Nbt, Slot, Var};
+                    use types::{Arr, BlockPos, NbtFile, Slot, Var};
 
                     use std::io;
                     use std::io::prelude::*;
@@ -481,7 +482,7 @@ packets! {
             0x46 => SetCompression { threshold: Var<i32> }
             // 0x47 => PlayerListHeaderFooter { header: Chat, footer: Chat }
             0x48 => ResourcePackSend { url: String, hash: String }
-            0x49 => UpdateEntityNbt { entity_id: Var<i32>, tag: Nbt }
+            0x49 => UpdateEntityNbt { entity_id: Var<i32>, tag: NbtFile }
         }
         serverbound {
             0x00 => KeepAlive { keep_alive_id: i32 }
