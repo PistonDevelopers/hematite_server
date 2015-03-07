@@ -382,9 +382,15 @@ mod tests {
         // Test correct length.
         assert_eq!(bytes.len(), nbt.len());
 
+        // Test encoding.
         let mut dst = Vec::new();
         <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
+
+        // Test decoding.
+        let mut src = io::Cursor::new(bytes);
+        let file = <NbtFile as Protocol>::proto_decode(&mut src).unwrap();
+        assert_eq!(&file, &nbt);
     }
 
     #[test]
@@ -411,9 +417,15 @@ mod tests {
         // Test correct length.
         assert_eq!(bytes.len(), nbt.len());
 
+        // Test encoding.
         let mut dst = Vec::new();
         <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
+
+        // Test decoding.
+        let mut src = io::Cursor::new(bytes);
+        let file = <NbtFile as Protocol>::proto_decode(&mut src).unwrap();
+        assert_eq!(&file, &nbt);
     }
 
     #[test]
@@ -435,9 +447,15 @@ mod tests {
         // Test correct length.
         assert_eq!(bytes.len(), nbt.len());
 
+        // Test encoding.
         let mut dst = Vec::new();
         <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
+
+        // Test decoding.
+        let mut src = io::Cursor::new(bytes);
+        let file = <NbtFile as Protocol>::proto_decode(&mut src).unwrap();
+        assert_eq!(&file, &nbt);
     }
 
     #[test]

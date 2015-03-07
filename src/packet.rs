@@ -135,7 +135,6 @@ macro_rules! packets {
                     #![allow(unused_imports)]
                     use packet::{BlockChangeRecord, Packet, PacketBase, Protocol, Stat, State};
                     use types::consts::*;
-                    use types::{Arr, BlockPos, Nbt, Slot, Var};
                     use types::{Arr, BlockPos, NbtFile, Slot, Var};
 
                     use std::io;
