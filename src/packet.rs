@@ -188,6 +188,7 @@ macro_rules! packets {
         /// Reads a new packet from a reader, wrapping in an enum for exhaustive matching.
         ///
         /// **TODO:** add support for compression.
+        #[allow(dead_code)]
         fn read_packet(direction: Direction, state: State, mut src: &mut Read) -> io::Result<PacketEnum> {
             let proto_len = try!(<Var<i32> as Protocol>::proto_decode(src));
             let id = try!(<Var<i32> as Protocol>::proto_decode(src));
