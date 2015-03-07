@@ -241,10 +241,10 @@ impl NbtValue {
 /// (through Gzip or zlib compression) methods.
 ///
 /// ```rust
-/// use hematite_server::types::{NbtFile, NbtValue};
+/// use hematite_server::types::{NbtBlob, NbtValue};
 ///
-/// // Create a `NbtFile` from key/value pairs.
-/// let mut nbt = NbtFile::new("".to_string());
+/// // Create a `NbtBlob` from key/value pairs.
+/// let mut nbt = NbtBlob::new("".to_string());
 /// nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
 /// nbt.insert("health".to_string(), NbtValue::Byte(100));
 /// nbt.insert("food".to_string(), NbtValue::Float(20.0));
@@ -254,20 +254,20 @@ impl NbtValue {
 /// nbt.write_zlib(&mut dst);
 /// ```
 #[derive(Clone, Debug, PartialEq)]
-pub struct NbtFile {
+pub struct NbtBlob {
     title: String,
     content: NbtValue
 }
 
-impl NbtFile {
+impl NbtBlob {
     /// Create a new NBT file format representation with the given name.
-    pub fn new(title: String) -> NbtFile {
+    pub fn new(title: String) -> NbtBlob {
         let map: HashMap<String, NbtValue> = HashMap::new();
-        NbtFile { title: title, content: NbtValue::Compound(map) }
+        NbtBlob { title: title, content: NbtValue::Compound(map) }
     }
 
-    /// Extracts an `NbtFile` object from an `io::Read` source.
-    pub fn from_reader(mut src: &mut io::Read) -> io::Result<NbtFile> {
+    /// Extracts an `NbtBlob` object from an `io::Read` source.
+    pub fn from_reader(mut src: &mut io::Read) -> io::Result<NbtBlob> {
         let header = try!(NbtValue::read_header(src));
         // Although it would be possible to read NBT format files composed of
         // arbitrary objects using the current API, by convention all files
@@ -277,43 +277,43 @@ impl NbtFile {
                        Some(format!("root value must be a Compound (0x0a)"))));
         }
         let content = try!(NbtValue::from_reader(header.0, src));
-        Ok(NbtFile { title: header.1, content: content })
+        Ok(NbtBlob { title: header.1, content: content })
     }
 
-    /// Extracts an `NbtFile` object from an `io::Read` source that is
+    /// Extracts an `NbtBlob` object from an `io::Read` source that is
     /// compressed using the Gzip format.
-    pub fn from_gzip(src: &mut io::Read) -> io::Result<NbtFile> {
+    pub fn from_gzip(src: &mut io::Read) -> io::Result<NbtBlob> {
         // Reads the gzip header, and fails if it is incorrect.
         let mut data = try!(GzDecoder::new(src));
-        NbtFile::from_reader(&mut data)
+        NbtBlob::from_reader(&mut data)
     }
 
-    /// Extracts an `NbtFile` object from an `io::Read` source that is
+    /// Extracts an `NbtBlob` object from an `io::Read` source that is
     /// compressed using the zlib format.
-    pub fn from_zlib(src: &mut io::Read) -> io::Result<NbtFile> {
-        NbtFile::from_reader(&mut ZlibDecoder::new(src))
+    pub fn from_zlib(src: &mut io::Read) -> io::Result<NbtBlob> {
+        NbtBlob::from_reader(&mut ZlibDecoder::new(src))
     }
 
-    /// Writes the binary representation of this `NbtFile` to an `io::Write`
+    /// Writes the binary representation of this `NbtBlob` to an `io::Write`
     /// sink.
     pub fn write(&self, sink: &mut io::Write) -> io::Result<()> {
         try!(self.content.write_header(sink, &self.title));
         self.content.write(sink)
     }
 
-    /// Writes the binary representation of this `NbtFile`, compressed using
+    /// Writes the binary representation of this `NbtBlob`, compressed using
     /// the Gzip format, to an `io::Write` sink.
     pub fn write_gzip(&self, sink: &mut io::Write) -> io::Result<()> {
         self.write(&mut GzEncoder::new(sink, Compression::Default))
     }
 
-    /// Writes the binary representation of this `NbtFile`, compressed using
+    /// Writes the binary representation of this `NbtBlob`, compressed using
     /// the Zlib format, to an `io::Write` sink.
     pub fn write_zlib(&self, sink: &mut io::Write) -> io::Result<()> {
         self.write(&mut ZlibEncoder::new(sink, Compression::Default))
     }
 
-    /// Insert an `NbtValue` with a given name into this `NbtFile` object. This
+    /// Insert an `NbtValue` with a given name into this `NbtBlob` object. This
     /// method is just a thin wrapper around the underlying `HashMap` method of
     /// the same name.
     ///
@@ -343,14 +343,14 @@ impl NbtFile {
         }
     }
 
-    /// The uncompressed length of this `NbtFile`, in bytes.
+    /// The uncompressed length of this `NbtBlob`, in bytes.
     pub fn len(&self) -> usize {
         // tag + name + content
         1 + 2 + self.title.as_slice().len() + self.content.len()
     }
 }
 
-impl<'a> Index<&'a str> for NbtFile {
+impl<'a> Index<&'a str> for NbtBlob {
     type Output = NbtValue;
 
     fn index<'b>(&'b self, s: &&'a str) -> &'b NbtValue {
@@ -361,19 +361,19 @@ impl<'a> Index<&'a str> for NbtFile {
     }
 }
 
-impl Protocol for NbtFile {
-    type Clean = NbtFile;
+impl Protocol for NbtBlob {
+    type Clean = NbtBlob;
 
-    fn proto_len(value: &NbtFile) -> usize {
+    fn proto_len(value: &NbtBlob) -> usize {
         value.len()
     }
 
-    fn proto_encode(value: &NbtFile, mut dst: &mut io::Write) -> io::Result<()> {
+    fn proto_encode(value: &NbtBlob, mut dst: &mut io::Write) -> io::Result<()> {
         value.write(dst)
     }
 
-    fn proto_decode(mut src: &mut io::Read) -> io::Result<NbtFile> {
-        NbtFile::from_reader(src)
+    fn proto_decode(mut src: &mut io::Read) -> io::Result<NbtBlob> {
+        NbtBlob::from_reader(src)
     }
 }
 
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn nbt_nonempty() {
-        let mut nbt = NbtFile::new("".to_string());
+        let mut nbt = NbtBlob::new("".to_string());
         nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
         nbt.insert("health".to_string(), NbtValue::Byte(100));
         nbt.insert("food".to_string(), NbtValue::Float(20.0));
@@ -429,13 +429,13 @@ mod tests {
         // not guarantee order (and so encoding is likely to be different, but
         // still correct).
         let mut src = io::Cursor::new(bytes);
-        let file = <NbtFile as Protocol>::proto_decode(&mut src).unwrap();
+        let file = <NbtBlob as Protocol>::proto_decode(&mut src).unwrap();
         assert_eq!(&file, &nbt);
     }
 
     #[test]
     fn nbt_empty_nbtfile() {
-        let nbt = NbtFile::new("".to_string());
+        let nbt = NbtBlob::new("".to_string());
 
         let bytes = vec![
             0x0a,
@@ -448,12 +448,12 @@ mod tests {
 
         // Test encoding.
         let mut dst = Vec::new();
-        <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
+        <NbtBlob as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
 
         // Test decoding.
         let mut src = io::Cursor::new(bytes);
-        let file = <NbtFile as Protocol>::proto_decode(&mut src).unwrap();
+        let file = <NbtBlob as Protocol>::proto_decode(&mut src).unwrap();
         assert_eq!(&file, &nbt);
     }
 
@@ -461,7 +461,7 @@ mod tests {
     fn nbt_nested_compound() {
         let mut inner = HashMap::new();
         inner.insert("test".to_string(), NbtValue::Byte(123));
-        let mut nbt = NbtFile::new("".to_string());
+        let mut nbt = NbtBlob::new("".to_string());
         nbt.insert("inner".to_string(), NbtValue::Compound(inner));
 
         let bytes = vec![
@@ -483,18 +483,18 @@ mod tests {
 
         // Test encoding.
         let mut dst = Vec::new();
-        <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
+        <NbtBlob as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
 
         // Test decoding.
         let mut src = io::Cursor::new(bytes);
-        let file = <NbtFile as Protocol>::proto_decode(&mut src).unwrap();
+        let file = <NbtBlob as Protocol>::proto_decode(&mut src).unwrap();
         assert_eq!(&file, &nbt);
     }
 
     #[test]
     fn nbt_empty_list() {
-        let mut nbt = NbtFile::new("".to_string());
+        let mut nbt = NbtBlob::new("".to_string());
         nbt.insert("list".to_string(), NbtValue::List(Vec::new()));
 
         let bytes = vec![
@@ -513,12 +513,12 @@ mod tests {
 
         // Test encoding.
         let mut dst = Vec::new();
-        <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
+        <NbtBlob as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
 
         // Test decoding.
         let mut src = io::Cursor::new(bytes);
-        let file = <NbtFile as Protocol>::proto_decode(&mut src).unwrap();
+        let file = <NbtBlob as Protocol>::proto_decode(&mut src).unwrap();
         assert_eq!(&file, &nbt);
     }
 
@@ -526,12 +526,12 @@ mod tests {
     fn nbt_no_root() {
         let bytes = vec![0x00];
         // Will fail, because the root is not a compound.
-        assert!(NbtFile::from_reader(&mut io::Cursor::new(bytes.as_slice())).is_err());
+        assert!(NbtBlob::from_reader(&mut io::Cursor::new(bytes.as_slice())).is_err());
     }
 
     #[test]
     fn nbt_invalid_list() {
-        let mut nbt = NbtFile::new("".to_string());
+        let mut nbt = NbtBlob::new("".to_string());
         let mut badlist = Vec::new();
         badlist.push(NbtValue::Byte(1));
         badlist.push(NbtValue::Short(1));
@@ -543,14 +543,14 @@ mod tests {
     fn nbt_bad_compression() {
         // These aren't in the zlib or gzip format, so they'll fail.
         let bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-        assert!(NbtFile::from_gzip(&mut io::Cursor::new(bytes.as_slice())).is_err());
-        assert!(NbtFile::from_zlib(&mut io::Cursor::new(bytes.as_slice())).is_err());
+        assert!(NbtBlob::from_gzip(&mut io::Cursor::new(bytes.as_slice())).is_err());
+        assert!(NbtBlob::from_zlib(&mut io::Cursor::new(bytes.as_slice())).is_err());
     }
 
     #[test]
     fn nbt_compression() {
-        // Create a non-trivial NbtFile.
-        let mut nbt = NbtFile::new("".to_string());
+        // Create a non-trivial NbtBlob.
+        let mut nbt = NbtBlob::new("".to_string());
         nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
         nbt.insert("health".to_string(), NbtValue::Byte(100));
         nbt.insert("food".to_string(), NbtValue::Float(20.0));
@@ -560,13 +560,13 @@ mod tests {
         // Test zlib encoding/decoding.
         let mut zlib_dst = Vec::new();
         nbt.write_zlib(&mut zlib_dst);
-        let zlib_file = NbtFile::from_zlib(&mut io::Cursor::new(zlib_dst)).unwrap();
+        let zlib_file = NbtBlob::from_zlib(&mut io::Cursor::new(zlib_dst)).unwrap();
         assert_eq!(&nbt, &zlib_file);
 
         // Test gzip encoding/decoding.
         let mut gzip_dst = Vec::new();
         nbt.write_gzip(&mut gzip_dst);
-        let gz_file = NbtFile::from_gzip(&mut io::Cursor::new(gzip_dst)).unwrap();
+        let gz_file = NbtBlob::from_gzip(&mut io::Cursor::new(gzip_dst)).unwrap();
         assert_eq!(&nbt, &gz_file);
     }
 }
