@@ -74,43 +74,43 @@ impl NbtValue {
         }
     }
 
-    pub fn write_header(&self, sink: &mut io::Write, title: &String) -> io::Result<()> {
-        try!((&mut *sink).write_u8(self.id()));
-        try!((&mut *sink).write_u16::<BigEndian>(title.len() as u16));
-        (&mut *sink).write_all(title.as_slice().as_bytes())
+    pub fn write_header(&self, mut sink: &mut io::Write, title: &String) -> io::Result<()> {
+        try!(sink.write_u8(self.id()));
+        try!(sink.write_u16::<BigEndian>(title.len() as u16));
+        sink.write_all(title.as_slice().as_bytes())
     }
 
     /// Writes the payload of this NbtValue value to the specified `Write` sink. To
     /// include the name, use `write_with_name()`.
-    pub fn write(&self, sink: &mut io::Write) -> io::Result<()> {
+    pub fn write(&self, mut sink: &mut io::Write) -> io::Result<()> {
         let res = match *self {
-            NbtValue::Byte(val)   => (&mut *sink).write_i8(val),
-            NbtValue::Short(val)  => (&mut *sink).write_i16::<BigEndian>(val),
-            NbtValue::Int(val)    => (&mut *sink).write_i32::<BigEndian>(val),
-            NbtValue::Long(val)   => (&mut *sink).write_i64::<BigEndian>(val),
-            NbtValue::Float(val)  => (&mut *sink).write_f32::<BigEndian>(val),
-            NbtValue::Double(val) => (&mut *sink).write_f64::<BigEndian>(val),
+            NbtValue::Byte(val)   => sink.write_i8(val),
+            NbtValue::Short(val)  => sink.write_i16::<BigEndian>(val),
+            NbtValue::Int(val)    => sink.write_i32::<BigEndian>(val),
+            NbtValue::Long(val)   => sink.write_i64::<BigEndian>(val),
+            NbtValue::Float(val)  => sink.write_f32::<BigEndian>(val),
+            NbtValue::Double(val) => sink.write_f64::<BigEndian>(val),
             NbtValue::ByteArray(ref vals) => {
-                try!((&mut *sink).write_i32::<BigEndian>(vals.len() as i32));
+                try!(sink.write_i32::<BigEndian>(vals.len() as i32));
                 for &byte in vals {
-                    try!((&mut *sink).write_i8(byte));
+                    try!(sink.write_i8(byte));
                 }
                 return Ok(());
             },
             NbtValue::String(ref val) => {
-                try!((&mut *sink).write_u16::<BigEndian>(val.len() as u16));
-                return (&mut *sink).write_all(val.as_slice().as_bytes());
+                try!(sink.write_u16::<BigEndian>(val.len() as u16));
+                return sink.write_all(val.as_slice().as_bytes());
             },
             NbtValue::List(ref vals) => {
                 // This is a bit of a trick: if the list is empty, don't bother
                 // checking its type.
                 if vals.len() == 0 {
-                    try!((&mut *sink).write_u8(1));
+                    try!(sink.write_u8(1));
                 } else {
                     // Otherwise, use the first element of the list.
-                    try!((&mut *sink).write_u8(vals[0].id()));
+                    try!(sink.write_u8(vals[0].id()));
                 }
-                try!((&mut *sink).write_i32::<BigEndian>(vals.len() as i32));
+                try!(sink.write_i32::<BigEndian>(vals.len() as i32));
                 for nbt in vals {
                     try!(nbt.write(sink));
                 }
@@ -123,12 +123,12 @@ impl NbtValue {
                     try!(nbt.write(sink));
                 }
                 // Write the marker for the end of the Compound.
-                (&mut *sink).write_u8(0x00)
+                sink.write_u8(0x00)
             }
             NbtValue::IntArray(ref vals) => {
-                try!((&mut *sink).write_i32::<BigEndian>(vals.len() as i32));
+                try!(sink.write_i32::<BigEndian>(vals.len() as i32));
                 for &nbt in vals {
-                    try!((&mut *sink).write_i32::<BigEndian>(nbt));
+                    try!(sink.write_i32::<BigEndian>(nbt));
                 }
                 return Ok(());
             },
@@ -142,13 +142,13 @@ impl NbtValue {
         }
     }
 
-    pub fn read_header(src: &mut io::Read) -> io::Result<(u8, String)> {
-        let id = try!((&mut *src).read_u8());
+    pub fn read_header(mut src: &mut io::Read) -> io::Result<(u8, String)> {
+        let id = try!(src.read_u8());
         if id == 0x00 { return Ok((0x00, "".to_string())); }
         // Extract the name.
-        let name_len = try!((&mut *src).read_u16::<BigEndian>());
+        let name_len = try!(src.read_u16::<BigEndian>());
         let name = if name_len != 0 {
-            let bytes = try!((&mut *src).read_exact(name_len as usize));
+            let bytes = try!(src.read_exact(name_len as usize));
             match String::from_utf8(bytes) {
                 Ok(v) => v,
                 Err(e) => return Err(io::Error::new(InvalidInput, "string is not UTF-8", Some(format!("{}", e))))
@@ -159,33 +159,33 @@ impl NbtValue {
         Ok((id, name))
     }
 
-    pub fn from_reader(id: u8, src: &mut io::Read) -> io::Result<NbtValue> {
+    pub fn from_reader(id: u8, mut src: &mut io::Read) -> io::Result<NbtValue> {
         match id {
-            0x01 => Ok(NbtValue::Byte(try!((&mut *src).read_i8()))),
-            0x02 => Ok(NbtValue::Short(try!((&mut *src).read_i16::<BigEndian>()))),
-            0x03 => Ok(NbtValue::Int(try!((&mut *src).read_i32::<BigEndian>()))),
-            0x04 => Ok(NbtValue::Long(try!((&mut *src).read_i64::<BigEndian>()))),
-            0x05 => Ok(NbtValue::Float(try!((&mut *src).read_f32::<BigEndian>()))),
-            0x06 => Ok(NbtValue::Double(try!((&mut *src).read_f64::<BigEndian>()))),
+            0x01 => Ok(NbtValue::Byte(try!(src.read_i8()))),
+            0x02 => Ok(NbtValue::Short(try!(src.read_i16::<BigEndian>()))),
+            0x03 => Ok(NbtValue::Int(try!(src.read_i32::<BigEndian>()))),
+            0x04 => Ok(NbtValue::Long(try!(src.read_i64::<BigEndian>()))),
+            0x05 => Ok(NbtValue::Float(try!(src.read_f32::<BigEndian>()))),
+            0x06 => Ok(NbtValue::Double(try!(src.read_f64::<BigEndian>()))),
             0x07 => { // ByteArray
-                let len = try!((&mut *src).read_i32::<BigEndian>()) as usize;
+                let len = try!(src.read_i32::<BigEndian>()) as usize;
                 let mut buf = Vec::with_capacity(len);
                 for _ in range(0, len) {
-                    buf.push(try!((&mut *src).read_i8()));
+                    buf.push(try!(src.read_i8()));
                 }
                 Ok(NbtValue::ByteArray(buf))
             },
             0x08 => { // String
-                let len = try!((&mut *src).read_u16::<BigEndian>()) as usize;
-                let bytes = try!((&mut *src).read_exact(len as usize));
+                let len = try!(src.read_u16::<BigEndian>()) as usize;
+                let bytes = try!(src.read_exact(len as usize));
                 match String::from_utf8(bytes) {
                     Ok(v)  => Ok(NbtValue::String(v)),
                     Err(e) => return Err(io::Error::new(InvalidInput, "string is not UTF-8", Some(format!("{}", e))))
                 }
             },
             0x09 => { // List
-                let id = try!((&mut *src).read_u8());
-                let len = try!((&mut *src).read_i32::<BigEndian>()) as usize;
+                let id = try!(src.read_u8());
+                let len = try!(src.read_i32::<BigEndian>()) as usize;
                 let mut buf = Vec::with_capacity(len);
                 for _ in range(0, len) {
                     buf.push(try!(NbtValue::from_reader(id, src)));
@@ -203,10 +203,10 @@ impl NbtValue {
                 Ok(NbtValue::Compound(buf))
             },
             0x0b => { // IntArray
-                let len = try!((&mut *src).read_i32::<BigEndian>()) as usize;
+                let len = try!(src.read_i32::<BigEndian>()) as usize;
                 let mut buf = Vec::with_capacity(len);
                 for _ in range(0, len) {
-                    buf.push(try!((&mut *src).read_i32::<BigEndian>()));
+                    buf.push(try!(src.read_i32::<BigEndian>()));
                 }
                 Ok(NbtValue::IntArray(buf))
             },
@@ -304,12 +304,12 @@ impl Protocol for NbtFile {
         value.len()
     }
 
-    fn proto_encode(value: &NbtFile, dst: &mut io::Write) -> io::Result<()> {
-        value.write(&mut *dst)
+    fn proto_encode(value: &NbtFile, mut dst: &mut io::Write) -> io::Result<()> {
+        value.write(dst)
     }
 
-    fn proto_decode(src: &mut io::Read) -> io::Result<NbtFile> {
-        NbtFile::from_reader(&mut *src)
+    fn proto_decode(mut src: &mut io::Read) -> io::Result<NbtFile> {
+        NbtFile::from_reader(src)
     }
 }
 
