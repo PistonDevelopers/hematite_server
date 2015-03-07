@@ -358,6 +358,9 @@ mod tests {
             0x00
         ];
 
+        // Test correct length.
+        assert_eq!(bytes.len(), nbt.len());
+
         // We can only test if the decoded bytes match, since the HashMap does
         // not guarantee order (and so encoding is likely to be different, but
         // still correct).
@@ -375,6 +378,9 @@ mod tests {
                 0x00, 0x00,
             0x00
         ];
+
+        // Test correct length.
+        assert_eq!(bytes.len(), nbt.len());
 
         let mut dst = Vec::new();
         <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
@@ -402,6 +408,9 @@ mod tests {
             0x00
         ];
 
+        // Test correct length.
+        assert_eq!(bytes.len(), nbt.len());
+
         let mut dst = Vec::new();
         <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
         assert_eq!(&dst, &bytes);
@@ -422,6 +431,9 @@ mod tests {
                     0x00, 0x00, 0x00, 0x00,
             0x00
         ];
+
+        // Test correct length.
+        assert_eq!(bytes.len(), nbt.len());
 
         let mut dst = Vec::new();
         <NbtFile as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
