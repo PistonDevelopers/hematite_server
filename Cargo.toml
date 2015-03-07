@@ -10,6 +10,7 @@ authors = [
 [[bin]]
 name = "hematite_server"
 path = "server/main.rs"
+doc = false
 
 [lib]
 name = "hematite_server"

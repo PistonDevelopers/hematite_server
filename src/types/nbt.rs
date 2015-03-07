@@ -1,22 +1,22 @@
 //! MC Named Binary Tag type.
 
-use byteorder::{ByteOrder, BigEndian, WriteBytesExt, ReadBytesExt};
-use byteorder::Error::{UnexpectedEOF, Io};
-
 use std::collections::HashMap;
 use std::io;
 use std::io::ErrorKind::InvalidInput;
 use std::iter::AdditiveIterator;
 use std::ops::Index;
 
-use packet::Protocol;
-use util::ReadExactExt;
+use byteorder::{ByteOrder, BigEndian, WriteBytesExt, ReadBytesExt};
+use byteorder::Error::{UnexpectedEOF, Io};
 
 use flate2::Compression;
 use flate2::read::{GzDecoder, ZlibDecoder};
 use flate2::write::{GzEncoder, ZlibEncoder};
 
-/// Represents a NBT value
+use packet::Protocol;
+use util::ReadExactExt;
+
+/// A value which can be represented in the Named Binary Tag (NBT) file format.
 #[derive(Clone, Debug, PartialEq)]
 pub enum NbtValue {
     Byte(i8),
@@ -76,14 +76,15 @@ impl NbtValue {
         }
     }
 
+    /// Writes the header (that is, the value's type ID and optionally a title)
+    /// of this `NbtValue` to an `io::Write` sink.
     pub fn write_header(&self, mut sink: &mut io::Write, title: &String) -> io::Result<()> {
         try!(sink.write_u8(self.id()));
         try!(sink.write_u16::<BigEndian>(title.len() as u16));
         sink.write_all(title.as_slice().as_bytes())
     }
 
-    /// Writes the payload of this NbtValue value to the specified `Write` sink. To
-    /// include the name, use `write_with_name()`.
+    /// Writes the payload of this `NbtValue` to an `io::Write` sink.
     pub fn write(&self, mut sink: &mut io::Write) -> io::Result<()> {
         let res = match *self {
             NbtValue::Byte(val)   => sink.write_i8(val),
@@ -152,6 +153,8 @@ impl NbtValue {
         }
     }
 
+    /// Reads any valid `NbtValue` header (that is, a type ID and a title of
+    /// arbitrary UTF-8 bytes) from an `io::Read` source.
     pub fn read_header(mut src: &mut io::Read) -> io::Result<(u8, String)> {
         let id = try!(src.read_u8());
         if id == 0x00 { return Ok((0x00, "".to_string())); }
@@ -169,6 +172,8 @@ impl NbtValue {
         Ok((id, name))
     }
 
+    /// Reads the payload of an `NbtValue` with a given type ID from an
+    /// `io::Read` source.
     pub fn from_reader(id: u8, mut src: &mut io::Read) -> io::Result<NbtValue> {
         match id {
             0x01 => Ok(NbtValue::Byte(try!(src.read_i8()))),
@@ -225,6 +230,29 @@ impl NbtValue {
     }
 }
 
+/// An object in the Named Binary Tag (NBT) file format.
+///
+/// This is essentially a map of names to `NbtValue`s, with an optional top-
+/// level name of its own. It can be created in a similar way to a `HashMap`,
+/// or read from an `io::Read` source, and its binary representation can be
+/// written to an `io::Write` sink.
+///
+/// These read and write methods support both uncompressed and compressed
+/// (through Gzip or zlib compression) methods.
+///
+/// ```rust
+/// use hematite_server::types::{NbtFile, NbtValue};
+///
+/// // Create a `NbtFile` from key/value pairs.
+/// let mut nbt = NbtFile::new("".to_string());
+/// nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
+/// nbt.insert("health".to_string(), NbtValue::Byte(100));
+/// nbt.insert("food".to_string(), NbtValue::Float(20.0));
+///
+/// // Write a compressed binary representation to a byte array.
+/// let mut dst = Vec::new();
+/// nbt.write_zlib(&mut dst);
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct NbtFile {
     title: String,
@@ -232,15 +260,16 @@ pub struct NbtFile {
 }
 
 impl NbtFile {
+    /// Create a new NBT file format representation with the given name.
     pub fn new(title: String) -> NbtFile {
         let map: HashMap<String, NbtValue> = HashMap::new();
         NbtFile { title: title, content: NbtValue::Compound(map) }
     }
 
-    /// Extracts an `NbtFile` from an arbitrary interface to `io::Read`.
+    /// Extracts an `NbtFile` object from an `io::Read` source.
     pub fn from_reader(mut src: &mut io::Read) -> io::Result<NbtFile> {
         let header = try!(NbtValue::read_header(src));
-        // Although it would be possible to read NBT files composed of
+        // Although it would be possible to read NBT format files composed of
         // arbitrary objects using the current API, by convention all files
         // have a top-level Compound.
         if header.0 != 0x0a {
@@ -251,31 +280,46 @@ impl NbtFile {
         Ok(NbtFile { title: header.1, content: content })
     }
 
-    /// Extracts an `NbtFile` value from a compressed gzip reader.
+    /// Extracts an `NbtFile` object from an `io::Read` source that is
+    /// compressed using the Gzip format.
     pub fn from_gzip(src: &mut io::Read) -> io::Result<NbtFile> {
         // Reads the gzip header, and fails if it is incorrect.
         let mut data = try!(GzDecoder::new(src));
         NbtFile::from_reader(&mut data)
     }
 
-    /// Extracts an `NbtFile` value from a compressed zlib reader.
+    /// Extracts an `NbtFile` object from an `io::Read` source that is
+    /// compressed using the zlib format.
     pub fn from_zlib(src: &mut io::Read) -> io::Result<NbtFile> {
         NbtFile::from_reader(&mut ZlibDecoder::new(src))
     }
 
+    /// Writes the binary representation of this `NbtFile` to an `io::Write`
+    /// sink.
     pub fn write(&self, sink: &mut io::Write) -> io::Result<()> {
         try!(self.content.write_header(sink, &self.title));
         self.content.write(sink)
     }
 
+    /// Writes the binary representation of this `NbtFile`, compressed using
+    /// the Gzip format, to an `io::Write` sink.
     pub fn write_gzip(&self, sink: &mut io::Write) -> io::Result<()> {
         self.write(&mut GzEncoder::new(sink, Compression::Default))
     }
 
+    /// Writes the binary representation of this `NbtFile`, compressed using
+    /// the Zlib format, to an `io::Write` sink.
     pub fn write_zlib(&self, sink: &mut io::Write) -> io::Result<()> {
         self.write(&mut ZlibEncoder::new(sink, Compression::Default))
     }
 
+    /// Insert an `NbtValue` with a given name into this `NbtFile` object. This
+    /// method is just a thin wrapper around the underlying `HashMap` method of
+    /// the same name.
+    ///
+    /// This method will also return `None` if a `NbtValue::List` with
+    /// heterogeneous elements is passed in, because this is illegal in the NBT
+    /// file format.
     pub fn insert(&mut self, name: String, value: NbtValue) -> Option<NbtValue> {
         // The follow prevents `List`s with heterogeneous tags from being
         // inserted into the file. It would be nicer to return an error, but
@@ -299,7 +343,7 @@ impl NbtFile {
         }
     }
 
-    /// The length of this `NbtFile`, in bytes.
+    /// The uncompressed length of this `NbtFile`, in bytes.
     pub fn len(&self) -> usize {
         // tag + name + content
         1 + 2 + self.title.as_slice().len() + self.content.len()
