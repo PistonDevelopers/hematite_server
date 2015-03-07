@@ -12,7 +12,9 @@ use std::ops::Index;
 use packet::Protocol;
 use util::ReadExactExt;
 
-use flate::{ inflate_bytes, inflate_bytes_zlib };
+use flate2::Compression;
+use flate2::read::{GzDecoder, ZlibDecoder};
+use flate2::write::{GzEncoder, ZlibEncoder};
 
 /// Represents a NBT value
 #[derive(Clone, Debug, PartialEq)]
@@ -249,35 +251,29 @@ impl NbtFile {
         Ok(NbtFile { title: header.1, content: content })
     }
 
-    /// Extracts an `NbtFile` value from compressed gzip data.
-    pub fn from_gzip(data: &[u8]) -> io::Result<NbtFile> {
-        // Check for the correct gzip header.
-        if &data[..4] != [0x1f, 0x8b, 0x08, 0x00].as_slice() {
-            return Err(io::Error::new(InvalidInput, "invalid gzip file", None));
-        };
-        // flake::inflate_bytes returns None in case of failure; turn this into
-        // an io::Error instead.
-        let data = match inflate_bytes(&data[10..]) {
-            Some(v) => v,
-            None    => return Err(io::Error::new(InvalidInput, "invalid gzip file", None))
-        };
-        NbtFile::from_reader(&mut io::Cursor::new(data.as_slice()))
+    /// Extracts an `NbtFile` value from a compressed gzip reader.
+    pub fn from_gzip(src: &mut io::Read) -> io::Result<NbtFile> {
+        // Reads the gzip header, and fails if it is incorrect.
+        let mut data = try!(GzDecoder::new(src));
+        NbtFile::from_reader(&mut data)
     }
 
-    /// Extracts an `NbtFile` value from compressed zlib data.
-    pub fn from_zlib(data: &[u8]) -> io::Result<NbtFile> {
-        // flake::inflate_bytes_zlib returns None in case of failure; turn this
-        // into an io::Error instead.
-        let data = match inflate_bytes_zlib(data) {
-            Some(v) => v,
-            None    => return Err(io::Error::new(InvalidInput, "invalid zlib file", None))
-        };
-        NbtFile::from_reader(&mut io::Cursor::new(data.as_slice()))
+    /// Extracts an `NbtFile` value from a compressed zlib reader.
+    pub fn from_zlib(src: &mut io::Read) -> io::Result<NbtFile> {
+        NbtFile::from_reader(&mut ZlibDecoder::new(src))
     }
 
     pub fn write(&self, sink: &mut io::Write) -> io::Result<()> {
         try!(self.content.write_header(sink, &self.title));
         self.content.write(sink)
+    }
+
+    pub fn write_gzip(&self, sink: &mut io::Write) -> io::Result<()> {
+        self.write(&mut GzEncoder::new(sink, Compression::Default))
+    }
+
+    pub fn write_zlib(&self, sink: &mut io::Write) -> io::Result<()> {
+        self.write(&mut ZlibEncoder::new(sink, Compression::Default))
     }
 
     pub fn insert(&mut self, name: String, value: NbtValue) -> Option<NbtValue> {
@@ -503,7 +499,30 @@ mod tests {
     fn nbt_bad_compression() {
         // These aren't in the zlib or gzip format, so they'll fail.
         let bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-        assert!(NbtFile::from_gzip(bytes.as_slice()).is_err());
-        assert!(NbtFile::from_zlib(bytes.as_slice()).is_err());
+        assert!(NbtFile::from_gzip(&mut io::Cursor::new(bytes.as_slice())).is_err());
+        assert!(NbtFile::from_zlib(&mut io::Cursor::new(bytes.as_slice())).is_err());
+    }
+
+    #[test]
+    fn nbt_compression() {
+        // Create a non-trivial NbtFile.
+        let mut nbt = NbtFile::new("".to_string());
+        nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
+        nbt.insert("health".to_string(), NbtValue::Byte(100));
+        nbt.insert("food".to_string(), NbtValue::Float(20.0));
+        nbt.insert("emeralds".to_string(), NbtValue::Short(12345));
+        nbt.insert("timestamp".to_string(), NbtValue::Int(1424778774));
+
+        // Test zlib encoding/decoding.
+        let mut zlib_dst = Vec::new();
+        nbt.write_zlib(&mut zlib_dst);
+        let zlib_file = NbtFile::from_zlib(&mut io::Cursor::new(zlib_dst)).unwrap();
+        assert_eq!(&nbt, &zlib_file);
+
+        // Test gzip encoding/decoding.
+        let mut gzip_dst = Vec::new();
+        nbt.write_gzip(&mut gzip_dst);
+        let gz_file = NbtFile::from_gzip(&mut io::Cursor::new(gzip_dst)).unwrap();
+        assert_eq!(&nbt, &gz_file);
     }
 }
