@@ -3,7 +3,7 @@
 #![feature(rustc_private)]
 
 extern crate byteorder;
-extern crate flate;
+extern crate flate2;
 extern crate uuid;
 
 pub mod packet;
