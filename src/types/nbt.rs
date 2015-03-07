@@ -106,15 +106,23 @@ impl NbtValue {
                 // checking its type.
                 if vals.len() == 0 {
                     try!(sink.write_u8(1));
+                    try!(sink.write_i32::<BigEndian>(0));
+                    return Ok(())
                 } else {
                     // Otherwise, use the first element of the list.
-                    try!(sink.write_u8(vals[0].id()));
+                    let first_id = vals[0].id();
+                    try!(sink.write_u8(first_id));
+                    try!(sink.write_i32::<BigEndian>(vals.len() as i32));
+                    for nbt in vals {
+                        // Ensure that all of the tags are the same type.
+                        if nbt.id() != first_id {
+                            return Err(io::Error::new(InvalidInput,
+                                                      "List values must be homogeneous", None));
+                        }
+                        try!(nbt.write(sink));
+                    }
+                    return Ok(())
                 }
-                try!(sink.write_i32::<BigEndian>(vals.len() as i32));
-                for nbt in vals {
-                    try!(nbt.write(sink));
-                }
-                return Ok(());
             },
             NbtValue::Compound(ref vals)  => {
                 for (name, ref nbt) in vals {
@@ -273,6 +281,22 @@ impl NbtFile {
     }
 
     pub fn insert(&mut self, name: String, value: NbtValue) -> Option<NbtValue> {
+        // The follow prevents `List`s with heterogeneous tags from being
+        // inserted into the file. It would be nicer to return an error, but
+        // this would depart from the `HashMap` API for `insert`.
+        match value {
+            NbtValue::List(ref vals) => {
+                if vals.len() != 0 {
+                    let first_id = vals[0].id();
+                    for nbt in vals {
+                        if nbt.id() != first_id {
+                            return None
+                        }
+                    }
+                }
+            },
+            _ => ()
+        };
         match self.content {
             NbtValue::Compound(ref mut v) => v.insert(name, value),
             _ => unreachable!()
@@ -463,6 +487,16 @@ mod tests {
         let bytes = vec![0x00];
         // Will fail, because the root is not a compound.
         assert!(NbtFile::from_reader(&mut io::Cursor::new(bytes.as_slice())).is_err());
+    }
+
+    #[test]
+    fn nbt_invalid_list() {
+        let mut nbt = NbtFile::new("".to_string());
+        let mut badlist = Vec::new();
+        badlist.push(NbtValue::Byte(1));
+        badlist.push(NbtValue::Short(1));
+        // Will fail to insert, because the List is heterogeneous.
+        assert!(nbt.insert("list".to_string(), NbtValue::List(badlist)).is_none());
     }
 
     #[test]
