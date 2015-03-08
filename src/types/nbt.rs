@@ -559,13 +559,13 @@ mod tests {
 
         // Test zlib encoding/decoding.
         let mut zlib_dst = Vec::new();
-        let _ = nbt.write_zlib(&mut zlib_dst);
+        nbt.write_zlib(&mut zlib_dst).unwrap();
         let zlib_file = NbtBlob::from_zlib(&mut io::Cursor::new(zlib_dst)).unwrap();
         assert_eq!(&nbt, &zlib_file);
 
         // Test gzip encoding/decoding.
         let mut gzip_dst = Vec::new();
-        let _ = nbt.write_gzip(&mut gzip_dst);
+        nbt.write_gzip(&mut gzip_dst).unwrap();
         let gz_file = NbtBlob::from_gzip(&mut io::Cursor::new(gzip_dst)).unwrap();
         assert_eq!(&nbt, &gz_file);
     }
