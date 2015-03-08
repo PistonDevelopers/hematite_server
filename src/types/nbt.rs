@@ -77,52 +77,52 @@ impl NbtValue {
     }
 
     /// Writes the header (that is, the value's type ID and optionally a title)
-    /// of this `NbtValue` to an `io::Write` sink.
-    pub fn write_header(&self, mut sink: &mut io::Write, title: &String) -> io::Result<()> {
-        try!(sink.write_u8(self.id()));
-        try!(sink.write_u16::<BigEndian>(title.len() as u16));
-        sink.write_all(title.as_slice().as_bytes())
+    /// of this `NbtValue` to an `io::Write` destination.
+    pub fn write_header(&self, mut dst: &mut io::Write, title: &String) -> io::Result<()> {
+        try!(dst.write_u8(self.id()));
+        try!(dst.write_u16::<BigEndian>(title.len() as u16));
+        dst.write_all(title.as_slice().as_bytes())
     }
 
-    /// Writes the payload of this `NbtValue` to an `io::Write` sink.
-    pub fn write(&self, mut sink: &mut io::Write) -> io::Result<()> {
+    /// Writes the payload of this `NbtValue` to an `io::Write` destination.
+    pub fn write(&self, mut dst: &mut io::Write) -> io::Result<()> {
         let res = match *self {
-            NbtValue::Byte(val)   => sink.write_i8(val),
-            NbtValue::Short(val)  => sink.write_i16::<BigEndian>(val),
-            NbtValue::Int(val)    => sink.write_i32::<BigEndian>(val),
-            NbtValue::Long(val)   => sink.write_i64::<BigEndian>(val),
-            NbtValue::Float(val)  => sink.write_f32::<BigEndian>(val),
-            NbtValue::Double(val) => sink.write_f64::<BigEndian>(val),
+            NbtValue::Byte(val)   => dst.write_i8(val),
+            NbtValue::Short(val)  => dst.write_i16::<BigEndian>(val),
+            NbtValue::Int(val)    => dst.write_i32::<BigEndian>(val),
+            NbtValue::Long(val)   => dst.write_i64::<BigEndian>(val),
+            NbtValue::Float(val)  => dst.write_f32::<BigEndian>(val),
+            NbtValue::Double(val) => dst.write_f64::<BigEndian>(val),
             NbtValue::ByteArray(ref vals) => {
-                try!(sink.write_i32::<BigEndian>(vals.len() as i32));
+                try!(dst.write_i32::<BigEndian>(vals.len() as i32));
                 for &byte in vals {
-                    try!(sink.write_i8(byte));
+                    try!(dst.write_i8(byte));
                 }
                 return Ok(());
             },
             NbtValue::String(ref val) => {
-                try!(sink.write_u16::<BigEndian>(val.len() as u16));
-                return sink.write_all(val.as_slice().as_bytes());
+                try!(dst.write_u16::<BigEndian>(val.len() as u16));
+                return dst.write_all(val.as_slice().as_bytes());
             },
             NbtValue::List(ref vals) => {
                 // This is a bit of a trick: if the list is empty, don't bother
                 // checking its type.
                 if vals.len() == 0 {
-                    try!(sink.write_u8(1));
-                    try!(sink.write_i32::<BigEndian>(0));
+                    try!(dst.write_u8(1));
+                    try!(dst.write_i32::<BigEndian>(0));
                     return Ok(())
                 } else {
                     // Otherwise, use the first element of the list.
                     let first_id = vals[0].id();
-                    try!(sink.write_u8(first_id));
-                    try!(sink.write_i32::<BigEndian>(vals.len() as i32));
+                    try!(dst.write_u8(first_id));
+                    try!(dst.write_i32::<BigEndian>(vals.len() as i32));
                     for nbt in vals {
                         // Ensure that all of the tags are the same type.
                         if nbt.id() != first_id {
                             return Err(io::Error::new(InvalidInput,
                                                       "List values must be homogeneous", None));
                         }
-                        try!(nbt.write(sink));
+                        try!(nbt.write(dst));
                     }
                     return Ok(())
                 }
@@ -130,16 +130,16 @@ impl NbtValue {
             NbtValue::Compound(ref vals)  => {
                 for (name, ref nbt) in vals {
                     // Write the header for the tag.
-                    try!(nbt.write_header(sink, &name));
-                    try!(nbt.write(sink));
+                    try!(nbt.write_header(dst, &name));
+                    try!(nbt.write(dst));
                 }
                 // Write the marker for the end of the Compound.
-                sink.write_u8(0x00)
+                dst.write_u8(0x00)
             }
             NbtValue::IntArray(ref vals) => {
-                try!(sink.write_i32::<BigEndian>(vals.len() as i32));
+                try!(dst.write_i32::<BigEndian>(vals.len() as i32));
                 for &nbt in vals {
-                    try!(sink.write_i32::<BigEndian>(nbt));
+                    try!(dst.write_i32::<BigEndian>(nbt));
                 }
                 return Ok(());
             },
@@ -235,7 +235,7 @@ impl NbtValue {
 /// This is essentially a map of names to `NbtValue`s, with an optional top-
 /// level name of its own. It can be created in a similar way to a `HashMap`,
 /// or read from an `io::Read` source, and its binary representation can be
-/// written to an `io::Write` sink.
+/// written to an `io::Write` destination.
 ///
 /// These read and write methods support both uncompressed and compressed
 /// (through Gzip or zlib compression) methods.
@@ -295,22 +295,22 @@ impl NbtBlob {
     }
 
     /// Writes the binary representation of this `NbtBlob` to an `io::Write`
-    /// sink.
-    pub fn write(&self, sink: &mut io::Write) -> io::Result<()> {
-        try!(self.content.write_header(sink, &self.title));
-        self.content.write(sink)
+    /// destination.
+    pub fn write(&self, dst: &mut io::Write) -> io::Result<()> {
+        try!(self.content.write_header(dst, &self.title));
+        self.content.write(dst)
     }
 
     /// Writes the binary representation of this `NbtBlob`, compressed using
-    /// the Gzip format, to an `io::Write` sink.
-    pub fn write_gzip(&self, sink: &mut io::Write) -> io::Result<()> {
-        self.write(&mut GzEncoder::new(sink, Compression::Default))
+    /// the Gzip format, to an `io::Write` destination.
+    pub fn write_gzip(&self, dst: &mut io::Write) -> io::Result<()> {
+        self.write(&mut GzEncoder::new(dst, Compression::Default))
     }
 
     /// Writes the binary representation of this `NbtBlob`, compressed using
-    /// the Zlib format, to an `io::Write` sink.
-    pub fn write_zlib(&self, sink: &mut io::Write) -> io::Result<()> {
-        self.write(&mut ZlibEncoder::new(sink, Compression::Default))
+    /// the Zlib format, to an `io::Write` dst.
+    pub fn write_zlib(&self, dst: &mut io::Write) -> io::Result<()> {
+        self.write(&mut ZlibEncoder::new(dst, Compression::Default))
     }
 
     /// Insert an `NbtValue` with a given name into this `NbtBlob` object. This
@@ -559,13 +559,13 @@ mod tests {
 
         // Test zlib encoding/decoding.
         let mut zlib_dst = Vec::new();
-        nbt.write_zlib(&mut zlib_dst);
+        nbt.write_zlib(&mut zlib_dst).unwrap();
         let zlib_file = NbtBlob::from_zlib(&mut io::Cursor::new(zlib_dst)).unwrap();
         assert_eq!(&nbt, &zlib_file);
 
         // Test gzip encoding/decoding.
         let mut gzip_dst = Vec::new();
-        nbt.write_gzip(&mut gzip_dst);
+        nbt.write_gzip(&mut gzip_dst).unwrap();
         let gz_file = NbtBlob::from_gzip(&mut io::Cursor::new(gzip_dst)).unwrap();
         assert_eq!(&nbt, &gz_file);
     }
