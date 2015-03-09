@@ -5,7 +5,7 @@ use std::error::FromError;
 use rustc_serialize::json;
 use rustc_serialize::json::{Json, ToJson};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ChatJsonError {
     MalformedJson(json::ParserError),
     IoError(io::Error),
@@ -33,7 +33,7 @@ impl FromError<json::ParserError> for ChatJsonError {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ChatJson {
     pub msg: Message,
     pub extra: Option<Vec<Json>>,
@@ -185,7 +185,7 @@ impl ToJson for ChatJson {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Message {
     PlainText(String),
     Score(String, String),
@@ -193,7 +193,7 @@ pub enum Message {
     Selector
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ClickEvent {
     OpenUrl(String),
     OpenFile(String),
@@ -226,7 +226,7 @@ impl ToJson for ClickEvent {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HoverEvent {
     Text(String),
     Achievement(String),
@@ -256,7 +256,7 @@ impl ToJson for HoverEvent {
     }
 }
 
-#[derive(Copy, Debug, Clone)]
+#[derive(Copy, Debug, Clone, Eq, PartialEq)]
 pub enum Color {
     Black       = 0x0,
     DarkBlue    = 0x1,
@@ -344,12 +344,24 @@ impl Format {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rustc_serialize::json::ToJson;
 
     #[test]
     fn chat_plain() {
         let msg = ChatJson::msg("Hello, world!".to_string());
-        println!("{}", msg.to_json());
+        let blob = r#"{
+            "text": "Hello, world!"
+        }"#;
+        let parsed = ChatJson::from_json(blob.chars()).unwrap();
+        assert_eq!(&msg, &parsed);
+    }
+
+    #[test]
+    fn chat_invalid_field() {
+        let blob = r#"{
+            "text": true
+        }"#;
+        let parsed = ChatJson::from_json(blob.chars());
+        assert_eq!(&parsed, &Err(ChatJsonError::InvalidField));
     }
 
     #[test]
