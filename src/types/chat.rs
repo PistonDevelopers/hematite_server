@@ -1,12 +1,44 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
+use std::io;
+use std::error::FromError;
 
+use rustc_serialize::json;
 use rustc_serialize::json::{Json, ToJson};
 
+#[derive(Clone, Debug)]
+pub enum ChatJsonError {
+    MalformedJson(json::ParserError),
+    IoError(io::Error),
+    InvalidObject,
+    InvalidField,
+    UnknownField,
+    UnknownColor,
+    InvalidClickEvent,
+    InvalidHoverEvent
+}
+
+impl FromError<io::Error> for ChatJsonError {
+    fn from_error(err: io::Error) -> ChatJsonError {
+        ChatJsonError::IoError(err)
+    }
+}
+
+impl FromError<json::ParserError> for ChatJsonError {
+    fn from_error(err: json::ParserError) -> ChatJsonError {
+        if let json::ParserError::IoError(e) = err {
+            ChatJsonError::IoError(e)
+        } else {
+            ChatJsonError::MalformedJson(err)
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ChatJson {
     pub msg: Message,
     pub extra: Option<Vec<Json>>,
     pub color: Option<Color>,
-    pub formats: Option<Vec<Format>>,
+    pub formats: BTreeSet<Format>,
     pub click_event: Option<ClickEvent>,
     pub hover_event: Option<HoverEvent>,
     pub insertion: Option<String>
@@ -15,8 +47,109 @@ pub struct ChatJson {
 impl ChatJson {
     pub fn msg(msg: String) -> ChatJson {
         ChatJson {
-            msg: Message::PlainText(msg), extra: None, color: None, formats: None,
+            msg: Message::PlainText(msg), extra: None, color: None, formats: BTreeSet::new(),
             click_event: None, hover_event: None, insertion: None
+        }
+    }
+
+    pub fn from_json<T: Iterator<Item=char>>(src: T) -> Result<ChatJson, ChatJsonError> {
+        let json = try!(json::Builder::new(src).build());
+        if let Json::Object(map) = json {
+            let mut result = ChatJson::msg("".to_string());
+            for (key, value) in map {
+                println!("{:?}: {:?}", key, value);
+                match key.as_slice() {
+                    "text" => {
+                        if let Json::String(string) = value {
+                            result.msg = Message::PlainText(string);
+                        } else {
+                            return Err(ChatJsonError::InvalidField);
+                        }
+                    },
+                    "insertion" => {
+                        if let Json::String(string) = value {
+                            result.insertion = Some(string);
+                        } else {
+                            return Err(ChatJsonError::InvalidField);
+                        }
+                    },
+                    "color" => {
+                        if let Json::String(string) = value {
+                            result.color = match Color::from_string(&string) {
+                                None => return Err(ChatJsonError::UnknownColor),
+                                c => c
+                            };
+                        } else {
+                            return Err(ChatJsonError::InvalidField);
+                        }
+                    },
+                    // Handle all of the different format strings.
+                    "bold"|"italic"|"underlined"|"strikethrough"|"obfuscated"|"reset"|"random" => {
+                        if let Json::Boolean(b) = value {
+                            if b == true {
+                                result.formats.insert(Format::from_string(&key).unwrap());
+                            }
+                        } else {
+                            return Err(ChatJsonError::InvalidField);
+                        }
+                    },
+                    // Handle the JSON format of click events.
+                    "clickEvent" => {
+                        if let Json::Object(event) = value {
+                            // Get the `value` first.
+                            let val: String = match event.get("value") {
+                                Some(&Json::String(ref string)) => string.clone(),
+                                _ => return Err(ChatJsonError::InvalidClickEvent)
+                            };
+                            // Handle the different click events.
+                            if let Some(&Json::String(ref string)) = event.get("action") {
+                                result.click_event = match string.as_slice() {
+                                    "open_url" => Some(ClickEvent::OpenUrl(val)),
+                                    "open_file" => Some(ClickEvent::OpenFile(val)),
+                                    "run_command" => Some(ClickEvent::RunCommand(val)),
+                                    "suggest_command" => Some(ClickEvent::SuggestCommand(val)),
+                                    _ => return Err(ChatJsonError::InvalidClickEvent)
+                                };
+                            } else {
+                                return Err(ChatJsonError::InvalidClickEvent);
+                            }
+                        }
+                    },
+                    // Handle the JSON format of hover events.
+                    "hoverEvent" => {
+                        if let Json::Object(event) = value {
+                            // Get the `value` first.
+                            let val: String = match event.get("value") {
+                                Some(&Json::String(ref string)) => string.clone(),
+                                _ => return Err(ChatJsonError::InvalidHoverEvent)
+                            };
+                            // Handle the different click events.
+                            if let Some(&Json::String(ref string)) = event.get("action") {
+                                result.hover_event = match string.as_slice() {
+                                    "show_text" => Some(HoverEvent::Text(val)),
+                                    "show_achievement" => Some(HoverEvent::Achievement(val)),
+                                    "show_item" => Some(HoverEvent::Item(val)),
+                                    _ => return Err(ChatJsonError::InvalidHoverEvent)
+                                };
+                            } else {
+                                return Err(ChatJsonError::InvalidHoverEvent);
+                            }
+                        }
+                    },
+                    "extra" => {
+                        if let Json::Array(extra) = value {
+                            result.extra = Some(extra);
+                        } else {
+                            return Err(ChatJsonError::InvalidField);
+                        }
+                    },
+                    // TODO: Error on unknown key when the implementation is complete.
+                    _ => (),
+                };
+            }
+            Ok(result)
+        } else {
+            Err(ChatJsonError::InvalidObject)
         }
     }
 }
@@ -52,6 +185,7 @@ impl ToJson for ChatJson {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum Message {
     PlainText(String),
     Score(String, String),
@@ -59,6 +193,7 @@ pub enum Message {
     Selector
 }
 
+#[derive(Clone, Debug)]
 pub enum ClickEvent {
     OpenUrl(String),
     OpenFile(String),
@@ -91,6 +226,7 @@ impl ToJson for ClickEvent {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum HoverEvent {
     Text(String),
     Achievement(String),
@@ -120,7 +256,7 @@ impl ToJson for HoverEvent {
     }
 }
 
-#[derive(Copy, FromPrimitive)]
+#[derive(Copy, Debug, Clone)]
 pub enum Color {
     Black       = 0x0,
     DarkBlue    = 0x1,
@@ -141,10 +277,6 @@ pub enum Color {
 }
 
 impl Color {
-    pub fn to_code(&self) -> u8 {
-        (*self) as u8
-    }
-
     pub fn to_string(&self) -> String {
         match self {
             &Color::Black => "black".to_string(),
@@ -189,8 +321,24 @@ impl Color {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum Format {
     Bold, Underlined, Strikethrough, Italic, Obfuscated, Random, Reset
+}
+
+impl Format {
+    pub fn from_string(string: &String) -> Option<Format> {
+        match string.as_slice() {
+            "bold"          => Some(Format::Bold),
+            "italic"        => Some(Format::Italic),
+            "underlined"    => Some(Format::Underlined),
+            "strikethrough" => Some(Format::Strikethrough),
+            "obfuscated"    => Some(Format::Obfuscated),
+            "random"        => Some(Format::Random),
+            "reset"         => Some(Format::Reset),
+            _               => None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -202,5 +350,34 @@ mod test {
     fn chat_plain() {
         let msg = ChatJson::msg("Hello, world!".to_string());
         println!("{}", msg.to_json());
+    }
+
+    #[test]
+    fn chat_extra() {
+        let blob = r#"{
+            "text": "Hello world",
+            "extra": [
+                "Testing",
+                {"translate":"demo.day.2"}
+            ],
+            "bold":true,
+            "italic":false,
+            "underlined": false,
+            "strikethrough": true,
+            "obfuscated": false,
+            "color":"red",
+            "clickEvent":{
+                "action":"run_command",
+                "value": "/time set day"
+            },
+            "hoverEvent": {
+                "action":"show_text",
+                "value": "Hello"
+            },
+            "insertion": "Hello world"
+        }"#;
+
+        let parsed = ChatJson::from_json(blob.chars());
+        println!("{:?}", parsed);
     }
 }
