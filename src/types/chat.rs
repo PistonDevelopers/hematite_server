@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::error::{Error, FromError};
 use std::io;
-use std::error::FromError;
 
 use rustc_serialize::json;
 use rustc_serialize::json::{Json, ToJson};
@@ -9,10 +9,10 @@ use rustc_serialize::json::{Json, ToJson};
 pub enum ChatJsonError {
     MalformedJson(json::ParserError),
     IoError(io::Error),
-    InvalidObject,
-    InvalidField,
-    UnknownField,
-    UnknownColor,
+    NotAnObject,
+    InvalidFieldType,
+    UnknownField(String),
+    InvalidColor(String),
     InvalidClickEvent,
     InvalidHoverEvent
 }
@@ -63,24 +63,24 @@ impl ChatJson {
                         if let Json::String(string) = value {
                             result.msg = Message::PlainText(string);
                         } else {
-                            return Err(ChatJsonError::InvalidField);
+                            return Err(ChatJsonError::InvalidFieldType);
                         }
                     },
                     "insertion" => {
                         if let Json::String(string) = value {
                             result.insertion = Some(string);
                         } else {
-                            return Err(ChatJsonError::InvalidField);
+                            return Err(ChatJsonError::InvalidFieldType);
                         }
                     },
                     "color" => {
                         if let Json::String(string) = value {
                             result.color = match Color::from_string(&string) {
-                                None => return Err(ChatJsonError::UnknownColor),
+                                None => return Err(ChatJsonError::InvalidColor(string)),
                                 c => c
                             };
                         } else {
-                            return Err(ChatJsonError::InvalidField);
+                            return Err(ChatJsonError::InvalidFieldType);
                         }
                     },
                     // Handle all of the different format strings.
@@ -90,7 +90,7 @@ impl ChatJson {
                                 result.formats.insert(Format::from_string(&key).unwrap());
                             }
                         } else {
-                            return Err(ChatJsonError::InvalidField);
+                            return Err(ChatJsonError::InvalidFieldType);
                         }
                     },
                     // Handle the JSON format of click events.
@@ -140,7 +140,7 @@ impl ChatJson {
                         if let Json::Array(extra) = value {
                             result.extra = Some(extra);
                         } else {
-                            return Err(ChatJsonError::InvalidField);
+                            return Err(ChatJsonError::InvalidFieldType);
                         }
                     },
                     // TODO: Error on unknown key when the implementation is complete.
@@ -149,7 +149,7 @@ impl ChatJson {
             }
             Ok(result)
         } else {
-            Err(ChatJsonError::InvalidObject)
+            Err(ChatJsonError::NotAnObject)
         }
     }
 }
@@ -379,7 +379,7 @@ mod test {
             "text": true
         }"#;
         let parsed = ChatJson::from_json(&mut io::Cursor::new(blob.as_bytes()));
-        assert_eq!(&parsed, &Err(ChatJsonError::InvalidField));
+        assert_eq!(&parsed, &Err(ChatJsonError::InvalidFieldType));
     }
 
     #[test]
