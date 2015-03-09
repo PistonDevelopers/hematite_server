@@ -52,8 +52,8 @@ impl ChatJson {
         }
     }
 
-    pub fn from_json<T: Iterator<Item=char>>(src: T) -> Result<ChatJson, ChatJsonError> {
-        let json = try!(json::Builder::new(src).build());
+    pub fn from_json(src: &mut io::Read) -> Result<ChatJson, ChatJsonError> {
+        let json = try!(Json::from_reader(src));
         if let Json::Object(map) = json {
             let mut result = ChatJson::msg("".to_string());
             for (key, value) in map {
@@ -360,6 +360,7 @@ impl Format {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::io;
     use rustc_serialize::json::{Builder, ToJson};
 
     #[test]
@@ -368,7 +369,7 @@ mod test {
         let blob = r#"{
             "text": "Hello, world!"
         }"#;
-        let parsed = ChatJson::from_json(blob.chars()).unwrap();
+        let parsed = ChatJson::from_json(&mut io::Cursor::new(blob.as_bytes())).unwrap();
         assert_eq!(&msg, &parsed);
     }
 
@@ -377,7 +378,7 @@ mod test {
         let blob = r#"{
             "text": true
         }"#;
-        let parsed = ChatJson::from_json(blob.chars());
+        let parsed = ChatJson::from_json(&mut io::Cursor::new(blob.as_bytes()));
         assert_eq!(&parsed, &Err(ChatJsonError::InvalidField));
     }
 
@@ -409,7 +410,8 @@ mod test {
 
         let blob_json = Builder::new(blob.chars()).build().unwrap();
         assert_eq!(&blob_json, &msg.to_json());
-        assert_eq!(&msg, &ChatJson::from_json(blob.chars()));
+        let parsed = ChatJson::from_json(&mut io::Cursor::new(blob.as_bytes())).unwrap();
+        assert_eq!(&msg, &parsed);
     }
 
     #[test]
@@ -437,7 +439,7 @@ mod test {
             "insertion": "Hello world"
         }"#;
 
-        let parsed = ChatJson::from_json(blob.chars());
+        let parsed = ChatJson::from_json(&mut io::Cursor::new(blob.as_bytes()));
         println!("{:?}", parsed);
     }
 }
