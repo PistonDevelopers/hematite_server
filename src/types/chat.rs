@@ -165,6 +165,10 @@ impl ToJson for ChatJson {
             _ => unimplemented!()
         };
 
+        for format in self.formats.iter() {
+            d.insert(format.to_string(), Json::Boolean(true));
+        }
+
         if let Some(ref extra) = self.extra {
             d.insert("extra".to_string(), extra.to_json());
         }
@@ -321,12 +325,24 @@ impl Color {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum Format {
     Bold, Underlined, Strikethrough, Italic, Obfuscated, Random, Reset
 }
 
 impl Format {
+    pub fn to_string(&self) -> String {
+        match self {
+            &Format::Bold          => "bold".to_string(),
+            &Format::Italic        => "italic".to_string(),
+            &Format::Underlined    => "underlined".to_string(),
+            &Format::Strikethrough => "strikethrough".to_string(),
+            &Format::Obfuscated    => "obfuscated".to_string(),
+            &Format::Random        => "random".to_string(),
+            &Format::Reset         => "reset".to_string()
+        }
+    }
+
     pub fn from_string(string: &String) -> Option<Format> {
         match string.as_slice() {
             "bold"          => Some(Format::Bold),
@@ -344,6 +360,7 @@ impl Format {
 #[cfg(test)]
 mod test {
     use super::*;
+    use rustc_serialize::json::{Builder, ToJson};
 
     #[test]
     fn chat_plain() {
@@ -362,6 +379,37 @@ mod test {
         }"#;
         let parsed = ChatJson::from_json(blob.chars());
         assert_eq!(&parsed, &Err(ChatJsonError::InvalidField));
+    }
+
+    #[test]
+    fn chat_with_events() {
+        let mut msg = ChatJson::msg("Hello, world!".to_string());
+        msg.formats.insert(Format::Bold);
+        msg.formats.insert(Format::Strikethrough);
+        msg.color = Some(Color::Red);
+        msg.insertion = Some("Hello, world!".to_string());
+        msg.click_event = Some(ClickEvent::RunCommand("/time set day".to_string()));
+        msg.hover_event = Some(HoverEvent::Text("Goodbye!".to_string()));
+
+        let blob = r#"{
+            "text": "Hello, world!",
+            "bold": true,
+            "strikethrough": true,
+            "color":"red",
+            "clickEvent":{
+                "action":"run_command",
+                "value": "/time set day"
+            },
+            "hoverEvent": {
+                "action":"show_text",
+                "value": "Goodbye!"
+            },
+            "insertion": "Hello, world!"
+        }"#;
+
+        let blob_json = Builder::new(blob.chars()).build().unwrap();
+        assert_eq!(&blob_json, &msg.to_json());
+        assert_eq!(&msg, &ChatJson::from_json(blob.chars()));
     }
 
     #[test]
