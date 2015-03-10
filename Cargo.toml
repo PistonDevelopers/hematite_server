@@ -12,6 +12,7 @@ name = "hematite_server"
 path = "server/main.rs"
 doc = false
 test = false
+bench = false
 
 [lib]
 name = "hematite_server"

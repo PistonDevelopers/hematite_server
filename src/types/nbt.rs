@@ -432,6 +432,9 @@ mod tests {
 
     use std::collections::HashMap;
     use std::io;
+    use std::fs::File;
+
+    use test::Bencher;
 
     use packet::Protocol;
 
@@ -634,5 +637,31 @@ mod tests {
         nbt.write_gzip(&mut gzip_dst).unwrap();
         let gz_file = NbtBlob::from_gzip(&mut io::Cursor::new(gzip_dst)).unwrap();
         assert_eq!(&nbt, &gz_file);
+    }
+
+    #[test]
+    fn nbt_bigtest() {
+        let mut bigtest_file = File::open("tests/big1.nbt").unwrap();
+        let bigtest = NbtBlob::from_gzip(&mut bigtest_file).unwrap();
+        // This is a pretty indirect way of testing correctness.
+        assert_eq!(1544, bigtest.len());
+    }
+
+    #[bench]
+    fn nbt_bench_bigwrite(b: &mut Bencher) {
+        let mut file = File::open("tests/big1.nbt").unwrap();
+        let nbt = NbtBlob::from_gzip(&mut file).unwrap();
+        b.iter(|| {
+            nbt.write(&mut io::sink())
+        });
+    }
+
+    #[bench]
+    fn nbt_bench_smallwrite(b: &mut Bencher) {
+        let mut file = File::open("tests/small4.nbt").unwrap();
+        let nbt = NbtBlob::from_reader(&mut file).unwrap();
+        b.iter(|| {
+            nbt.write(&mut io::sink())
+        });
     }
 }
