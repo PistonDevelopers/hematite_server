@@ -26,10 +26,12 @@ impl ChunkColumn {
         chunks + biomes
     }
     pub fn encode(&self) -> io::Result<Vec<u8>> {
+        use byteorder::{LittleEndian, WriteBytesExt};
+        
         let mut dst: Cursor<Vec<u8>> = Cursor::new(Vec::new());
         for chunk in self.chunks.iter() {
             for x in chunk.blocks.iter() {
-                try!(<u16 as Protocol>::proto_encode(x, &mut dst));
+                try!(dst.write_u16::<LittleEndian>(*x));
             }
         }
         for chunk in self.chunks.iter() {
