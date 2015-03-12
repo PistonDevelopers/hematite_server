@@ -131,6 +131,7 @@ impl FromError<byteorder::Error> for NbtError {
     }
 }
 
+// for InterruptError(_, Box<NbtError>)
 impl FromError<Box<NbtError>> for NbtError {
     fn from_error(err: Box<NbtError>) -> NbtError {
         *err
@@ -157,35 +158,45 @@ impl FromError<NbtError> for io::Error {
     }
 }
 
-trait NbtValueHelper<T> {
-    fn new(val: T) -> Self;
+pub trait ToNbtValue {
+    fn to_nbt(self) -> NbtValue;
 }
 
-// trait NbtBlobHelper<T, S> where S: ToString { 
-//     fn new(title: S) -> Self;
-//     fn insert(&mut self, name: S, value: T) -> Result<(), NbtError>;
-// }
+pub trait ToNbtBlob<T> {
+    type NbtType = Self;
 
-// impl <T : NbtValueHelper<T>, S: Str> NbtBlobHelper<T, S> for NbtBlob {
+    fn new(val: T) -> NbtBlob;
+}
+
+// impl <T: ToNbtValue<T>> ToNbtValue<T> for NbtValue {
+//     type NbtType = T;
 //     #[inline]
-//     fn new(title: S) -> NbtBlob {
-//         NbtBlob::new(title.to_string())
-//     }
-//     #[inline]
-//     fn insert(&mut self, name: S, value: T) -> Result<(), NbtError> {
-//         self.insert(name.to_string(), NbtValueHelper::new(value))
+//     fn new(val: T) -> T {
+//         val
 //     }
 // }
 
-impl <T: NbtValueHelper<T>> NbtValueHelper<T> for NbtValue {
-    fn new(val: T) -> NbtValue {
-        NbtValueHelper::new(val)
+impl ToNbtValue for NbtValue {
+    #[inline]
+    fn to_nbt(self) -> NbtValue {
+        self
     }
 }
 
-impl <'a> NbtValueHelper<&'a str> for NbtValue {
-    fn new(val: &str) -> NbtValue {
-        NbtValueHelper::new(val.to_string())
+impl <'a> ToNbtValue for &'a str {
+    #[inline]
+    fn to_nbt(self) -> NbtValue {
+        NbtValue::String(self.to_string())
+    }
+}
+
+impl <T> ToNbtBlob<T> for NbtBlob where T: ToString {
+    type NbtType = T;
+    /// Create a new NBT file format representation with the given name.
+    #[inline]
+    fn new(title: T) -> NbtBlob {
+        let map: HashMap<String, NbtValue> = HashMap::new();
+        NbtBlob { title: title.to_string(), content: NbtValue::Compound(map)}
     }
 }
 
@@ -199,16 +210,11 @@ macro_rules! nbt_define(
             $($name($ty),)*
         }
         $(
-            impl NbtValueHelper<$ty> for NbtValue {
+            impl ToNbtValue for $ty {
                 #[inline]
-                fn new(val: $ty) -> NbtValue {
-                    NbtValue::$name(val)
+                fn to_nbt(self) -> NbtValue {
+                    NbtValue::$name(self)
                 }
-                // actually it is functional.
-                //#[inline]
-                // fn id(val: $ty) -> u8 {
-                //     $id
-                // }
             }
         )*
     )
@@ -229,6 +235,7 @@ nbt_define! (
 );
 
 impl NbtValue {
+
     /// The type ID of this `NbtValue`, which is a single byte in the range
     /// `0x01` to `0x0b`.
     pub fn id(&self) -> u8 {
@@ -443,11 +450,6 @@ pub struct NbtBlob {
 }
 
 impl NbtBlob {
-    /// Create a new NBT file format representation with the given name.
-    pub fn new(title: String) -> NbtBlob {
-        let map: HashMap<String, NbtValue> = HashMap::new();
-        NbtBlob { title: title, content: NbtValue::Compound(map) }
-    }
 
     /// Extracts an `NbtBlob` object from an `io::Read` source.
     pub fn from_reader(mut src: &mut io::Read) -> Result<NbtBlob, NbtError> {
@@ -477,7 +479,6 @@ impl NbtBlob {
         };
         Ok(NbtBlob { title: header.1, content: content })
     }
-
     /// Extracts an `NbtBlob` object from an `io::Read` source that is
     /// compressed using the Gzip format.
     pub fn from_gzip(src: &mut io::Read) -> Result<NbtBlob, NbtError> {
@@ -518,10 +519,12 @@ impl NbtBlob {
     /// This method will also return an error if a `NbtValue::List` with
     /// heterogeneous elements is passed in, because this is illegal in the NBT
     /// file format.
-    pub fn insert(&mut self, name: String, value: NbtValue) -> Result<(), NbtError> {
+    pub fn insert<S: ToString, T: ToNbtValue>(&mut self, name: S, value: T) -> Result<(), NbtError> {
         // The follow prevents `List`s with heterogeneous tags from being
         // inserted into the file. It would be nicer to return an error, but
         // this would depart from the `HashMap` API for `insert`.
+        let value = value.to_nbt();
+        let name = name.to_string();
         if let NbtValue::List(ref vals) = value {
             if vals.len() != 0 {
                 let first_id = vals[0].id();
@@ -582,8 +585,6 @@ mod tests {
     use std::io;
 
     use packet::Protocol;
-
-    pub use super::NbtValueHelper;
     // pub use super::NbtBlobHelper;
 
     #[test]
@@ -863,28 +864,31 @@ mod tests {
     #[test]
     fn nbt_new_value() {
         // We are not Java coder :(
-        let mut a = NbtBlob::new("".to_string());
+        let mut a = NbtBlob::new("456123".to_string());
         a.insert("name".to_string(), NbtValue::String("Herobrine".to_string())).unwrap();
         a.insert("health".to_string(), NbtValue::Byte(100)).unwrap();
         a.insert("food".to_string(), NbtValue::Float(20.0)).unwrap();
         a.insert("emeralds".to_string(), NbtValue::Short(12345)).unwrap();
         a.insert("timestamp".to_string(), NbtValue::Int(1424778774)).unwrap();
 
-        let mut b = NbtBlob::new("".to_string());
-        b.insert("name".to_string(), NbtValue::new("Herobrine".to_string())).unwrap();
-        b.insert("health".to_string(), NbtValue::new(100i8)).unwrap();
-        b.insert("food".to_string(), NbtValue::new(20.0f32)).unwrap();
-        b.insert("emeralds".to_string(), NbtValue::new(12345i16)).unwrap();
-        b.insert("timestamp".to_string(), NbtValue::new(1424778774i32)).unwrap();
+        let mut b = NbtBlob::new("456123");
+        b.insert("name", "Herobrine".to_nbt()).unwrap();
+        b.insert("health", 100i8.to_nbt()).unwrap();
+        b.insert("food", 20.0f32.to_nbt()).unwrap();
+        b.insert("emeralds", 12345i16.to_nbt()).unwrap();
+        b.insert("timestamp", 1424778774i32.to_nbt()).unwrap();
 
-        // We are Rustocean :) but NbtBlobHelper failed :(
-        // let mut c = NbtBlob::new("".to_string());
-        // c.insert("name", "Herobrine").unwrap();
-        // c.insert("health", 100i8).unwrap();
-        // c.insert("food", 20.0f32).unwrap();
-        // c.insert("emeralds", 12345i16).unwrap();
-        // c.insert("timestamp", 1424778774i32).unwrap();
+        // We are Rustocean :)
+        let mut c = NbtBlob::new(456123);
+        c.insert("name", "Herobrine").unwrap();
+        c.insert("health", 100i8).unwrap();
+        c.insert("food", 20.0f32).unwrap();
+        c.insert("emeralds", 12345i16).unwrap();
+        c.insert("timestamp", 1424778774i32).unwrap();
 
         assert_eq!(&a, &b);
+        assert_eq!(&a, &c);
+
+        assert_eq!(NbtBlob::new(12345), NbtBlob::new("12345".to_string()));
     }
 }
