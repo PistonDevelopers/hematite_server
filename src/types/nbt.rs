@@ -102,10 +102,8 @@ pub enum NbtError {
     /// strings.
     InvalidUtf8,
     /// This is a such error, but maybe returns data when error occurs.
-    /// It should be useful for something unexcepted error or expand id type at outside rust codes.
+    /// It should be useful for unexcepted error process or expand id type process at outside rust codes.
     InterruptError(NbtType, Box<NbtError>),
-    // FIXME: NbtBlob and NbtValue should be are same things.
-    //InterruptError2(NbtBlob, Box<NbtError>),
 }
 
 impl FromError<io::Error> for NbtError {
@@ -131,7 +129,6 @@ impl FromError<byteorder::Error> for NbtError {
     }
 }
 
-// for InterruptError(_, Box<NbtError>)
 impl FromError<Box<NbtError>> for NbtError {
     fn from_error(err: Box<NbtError>) -> NbtError {
         *err
