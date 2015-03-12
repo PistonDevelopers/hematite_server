@@ -72,7 +72,7 @@ macro_rules! try_collect(
     );
 );
 
-// WTF
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum NbtType {
     Blob(NbtBlob),
@@ -167,14 +167,6 @@ pub trait ToNbtBlob<T> {
 
     fn new(val: T) -> NbtBlob;
 }
-
-// impl <T: ToNbtValue<T>> ToNbtValue<T> for NbtValue {
-//     type NbtType = T;
-//     #[inline]
-//     fn new(val: T) -> T {
-//         val
-//     }
-// }
 
 impl ToNbtValue for NbtValue {
     #[inline]
