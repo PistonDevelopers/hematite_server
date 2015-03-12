@@ -19,5 +19,5 @@ path = "src/lib.rs"
 
 [dependencies]
 byteorder = "*"
-uuid = "*"
 flate2 = "*"
+uuid = "*"

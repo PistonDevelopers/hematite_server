@@ -60,7 +60,7 @@ pub enum NextState {
 mod prelude {
     pub use packet::{BlockChangeRecord, Protocol, PacketRead, PacketWrite, Stat, NextState};
     pub use types::consts::*;
-    pub use types::{Arr, BlockPos, NbtBlob, Slot, Var};
+    pub use types::{Arr, BlockPos, NbtBlob, Slot, UuidString, Var};
 
     pub use std::io;
     pub use std::io::prelude::*;
@@ -467,7 +467,7 @@ pub mod login {
     pub mod clientbound { packets! {
         // 0x00 => Disconnect { reason: Chat }
         0x01 => EncryptionRequest { server_id: String, pubkey: Arr<Var<i32>, u8>, verify_token: Arr<Var<i32>, u8> }
-        // 0x02 => LoginSuccess { uuid: Uuid, username: String; impl Protocol for LoginSuccess { ... } } // NOTE: uuid field is encoded as a string!
+        0x02 => LoginSuccess { uuid: UuidString, username: String }
         0x03 => SetCompression { threshold: Var<i32> }
     } }
     pub mod serverbound { packets! {
