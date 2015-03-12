@@ -162,12 +162,6 @@ pub trait ToNbtValue {
     fn to_nbt(self) -> NbtValue;
 }
 
-pub trait ToNbtBlob<T> {
-    type NbtType = Self;
-
-    fn new(val: T) -> NbtBlob;
-}
-
 impl ToNbtValue for NbtValue {
     #[inline]
     fn to_nbt(self) -> NbtValue {
@@ -179,16 +173,6 @@ impl <'a> ToNbtValue for &'a str {
     #[inline]
     fn to_nbt(self) -> NbtValue {
         NbtValue::String(self.to_string())
-    }
-}
-
-impl <T> ToNbtBlob<T> for NbtBlob where T: ToString {
-    type NbtType = T;
-    /// Create a new NBT file format representation with the given name.
-    #[inline]
-    fn new(title: T) -> NbtBlob {
-        let map: HashMap<String, NbtValue> = HashMap::new();
-        NbtBlob { title: title.to_string(), content: NbtValue::Compound(map)}
     }
 }
 
@@ -442,7 +426,12 @@ pub struct NbtBlob {
 }
 
 impl NbtBlob {
-
+    /// Create a new NBT file format representation with the given name.
+    #[inline]
+    pub fn new<T: ToString>(title: T) -> NbtBlob {
+        let map: HashMap<String, NbtValue> = HashMap::new();
+        NbtBlob { title: title.to_string(), content: NbtValue::Compound(map)}
+    }
     /// Extracts an `NbtBlob` object from an `io::Read` source.
     pub fn from_reader(mut src: &mut io::Read) -> Result<NbtBlob, NbtError> {
         let header = try!(NbtValue::read_header(src));
@@ -577,7 +566,6 @@ mod tests {
     use std::io;
 
     use packet::Protocol;
-    // pub use super::NbtBlobHelper;
 
     #[test]
     fn nbt_nonempty() {
