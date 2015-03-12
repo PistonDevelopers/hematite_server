@@ -1,0 +1,17 @@
+[package]
+
+name = "hem-nbt"
+version = "0.0.1"
+authors = [
+    "Fenhl <fenhl@fenhl.net>",
+    "Carlos Cobo <toqueteos@gmail.com>",
+    "Aaron Jacobs <atheriel@gmail.com>"
+]
+
+[lib]
+name = "hem-nbt"
+path = "lib.rs"
+
+[dependencies]
+byteorder = "*"
+flate2 = "*"

@@ -1,5 +1,14 @@
 //! MC Named Binary Tag type.
 
+#![feature(core)]
+#![feature(fs)]
+#![feature(io)]
+#![feature(test)]
+
+extern crate byteorder;
+extern crate flate2;
+extern crate test;
+
 use std::collections::HashMap;
 use std::error::FromError;
 use std::io;
@@ -8,15 +17,11 @@ use std::iter::AdditiveIterator;
 use std::ops::Index;
 use std::string;
 
-use byteorder;
 use byteorder::{ByteOrder, BigEndian, WriteBytesExt, ReadBytesExt};
 
 use flate2::Compression;
 use flate2::read::{GzDecoder, ZlibDecoder};
 use flate2::write::{GzEncoder, ZlibEncoder};
-
-use packet::Protocol;
-use util::ReadExactExt;
 
 /// Errors that may be encountered when constructing, parsing, or encoding
 /// `NbtValue` and `NbtBlob` objects.
@@ -292,17 +297,20 @@ impl NbtValue {
 /// (through Gzip or zlib compression) methods.
 ///
 /// ```rust
-/// use hematite_server::types::{NbtBlob, NbtValue};
+/// extern crate "hem-nbt" as nbt;
+/// use nbt::{NbtBlob, NbtError, NbtValue};
 ///
 /// // Create a `NbtBlob` from key/value pairs.
-/// let mut nbt = NbtBlob::new("".to_string());
-/// nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
-/// nbt.insert("health".to_string(), NbtValue::Byte(100));
-/// nbt.insert("food".to_string(), NbtValue::Float(20.0));
+/// fn main() {
+///     let mut nbt = NbtBlob::new("".to_string());
+///     nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
+///     nbt.insert("health".to_string(), NbtValue::Byte(100));
+///     nbt.insert("food".to_string(), NbtValue::Float(20.0));
 ///
-/// // Write a compressed binary representation to a byte array.
-/// let mut dst = Vec::new();
-/// nbt.write_zlib(&mut dst);
+///     // Write a compressed binary representation to a byte array.
+///     let mut dst = Vec::new();
+///     nbt.write_zlib(&mut dst);
+/// }
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct NbtBlob {
@@ -410,21 +418,24 @@ impl<'a> Index<&'a str> for NbtBlob {
     }
 }
 
-impl Protocol for NbtBlob {
-    type Clean = NbtBlob;
-
-    fn proto_len(value: &NbtBlob) -> usize {
-        value.len()
-    }
-
-    fn proto_encode(value: &NbtBlob, mut dst: &mut io::Write) -> io::Result<()> {
-        Ok(try!(value.write(dst)))
-    }
-
-    fn proto_decode(mut src: &mut io::Read) -> io::Result<NbtBlob> {
-        Ok(try!(NbtBlob::from_reader(src)))
+trait ReadExactExt: io::Read {
+    /// Returns a `Vec<u8>` containing the next `len` bytes in the reader.
+    ///
+    /// Adapted from `byteorder::read_full`.
+    fn read_exact(&mut self, len: usize) -> io::Result<Vec<u8>> {
+        let mut buf = vec![0; len];
+        let mut n_read = 0usize;
+        while n_read < buf.len() {
+            match try!(self.read(&mut buf[n_read..])) {
+                0 => { return Err(io::Error::new(io::ErrorKind::InvalidInput, "unexpected EOF", None)); }
+                n => n_read += n
+            }
+        }
+        Ok(buf)
     }
 }
+
+impl<R: io::Read> ReadExactExt for R {}
 
 #[cfg(test)]
 mod tests {
@@ -435,8 +446,6 @@ mod tests {
     use std::fs::File;
 
     use test::Bencher;
-
-    use packet::Protocol;
 
     #[test]
     fn nbt_nonempty() {
@@ -481,7 +490,7 @@ mod tests {
         // not guarantee order (and so encoding is likely to be different, but
         // still correct).
         let mut src = io::Cursor::new(bytes);
-        let file = <NbtBlob as Protocol>::proto_decode(&mut src).unwrap();
+        let file = NbtBlob::from_reader(&mut src).unwrap();
         assert_eq!(&file, &nbt);
     }
 
@@ -500,12 +509,12 @@ mod tests {
 
         // Test encoding.
         let mut dst = Vec::new();
-        <NbtBlob as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
+        nbt.write(&mut dst).unwrap();
         assert_eq!(&dst, &bytes);
 
         // Test decoding.
         let mut src = io::Cursor::new(bytes);
-        let file = <NbtBlob as Protocol>::proto_decode(&mut src).unwrap();
+        let file = NbtBlob::from_reader(&mut src).unwrap();
         assert_eq!(&file, &nbt);
     }
 
@@ -535,12 +544,12 @@ mod tests {
 
         // Test encoding.
         let mut dst = Vec::new();
-        <NbtBlob as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
+        nbt.write(&mut dst).unwrap();
         assert_eq!(&dst, &bytes);
 
         // Test decoding.
         let mut src = io::Cursor::new(bytes);
-        let file = <NbtBlob as Protocol>::proto_decode(&mut src).unwrap();
+        let file = NbtBlob::from_reader(&mut src).unwrap();
         assert_eq!(&file, &nbt);
     }
 
@@ -565,12 +574,12 @@ mod tests {
 
         // Test encoding.
         let mut dst = Vec::new();
-        <NbtBlob as Protocol>::proto_encode(&nbt, &mut dst).unwrap();
+        nbt.write(&mut dst).unwrap();
         assert_eq!(&dst, &bytes);
 
         // Test decoding.
         let mut src = io::Cursor::new(bytes);
-        let file = <NbtBlob as Protocol>::proto_decode(&mut src).unwrap();
+        let file = NbtBlob::from_reader(&mut src).unwrap();
         assert_eq!(&file, &nbt);
     }
 
@@ -641,7 +650,7 @@ mod tests {
 
     #[test]
     fn nbt_bigtest() {
-        let mut bigtest_file = File::open("tests/big1.nbt").unwrap();
+        let mut bigtest_file = File::open("../tests/big1.nbt").unwrap();
         let bigtest = NbtBlob::from_gzip(&mut bigtest_file).unwrap();
         // This is a pretty indirect way of testing correctness.
         assert_eq!(1544, bigtest.len());
@@ -649,7 +658,7 @@ mod tests {
 
     #[bench]
     fn nbt_bench_bigwrite(b: &mut Bencher) {
-        let mut file = File::open("tests/big1.nbt").unwrap();
+        let mut file = File::open("../tests/big1.nbt").unwrap();
         let nbt = NbtBlob::from_gzip(&mut file).unwrap();
         b.iter(|| {
             nbt.write(&mut io::sink())
@@ -658,7 +667,7 @@ mod tests {
 
     #[bench]
     fn nbt_bench_smallwrite(b: &mut Bencher) {
-        let mut file = File::open("tests/small4.nbt").unwrap();
+        let mut file = File::open("../tests/small4.nbt").unwrap();
         let nbt = NbtBlob::from_reader(&mut file).unwrap();
         b.iter(|| {
             nbt.write(&mut io::sink())

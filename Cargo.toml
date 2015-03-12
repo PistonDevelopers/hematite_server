@@ -22,3 +22,6 @@ path = "src/lib.rs"
 byteorder = "*"
 flate2 = "*"
 uuid = "*"
+
+[dependencies.hem-nbt]
+path = "hem-nbt"
