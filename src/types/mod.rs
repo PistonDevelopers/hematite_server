@@ -13,4 +13,5 @@ pub use self::chunk::{Chunk, ChunkColumn};
 pub use self::nbt::{NbtBlob, NbtError, NbtValue};
 pub use self::pos::BlockPos;
 pub use self::slot::Slot;
+pub use self::uuid::UuidString;
 pub use self::varnum::Var;
