@@ -18,67 +18,6 @@ use flate2::write::{GzEncoder, ZlibEncoder};
 use packet::Protocol;
 use util::ReadExactExt;
 
-macro_rules! try_collect(
-    (_list $buf:expr, $ty:expr, $err:expr) => (
-        match $err {
-            NbtError::InterruptError(NbtType::Value(val), err) => {
-                $buf.push(val);
-                try_collect!(_return $buf, $ty, err);
-            },
-            _ => (),
-        }
-    );
-    (_map $buf:expr, $name:expr, $ty:expr, $err:expr) => (
-        match $err {
-            NbtError::InterruptError(NbtType::Value(val), err) => {
-                $buf.insert($name, val);
-                try_collect!(_return $buf, $ty, err);
-            },
-            _ => (),
-        }
-    );
-    (_return $buf:expr, $ty:expr, $err:expr) => (
-        return Err(
-            NbtError::InterruptError(
-                NbtType::Value( $ty($buf) ), Box::new( FromError::from_error($err) )
-            )
-        )
-    );
-    (list $buf:expr, $ty:expr, $x:expr) => (
-        match $x {
-            Ok(val) => val,
-            Err(err) => {
-                try_collect!(_list $buf, $ty, err);
-                try_collect!(_return $buf, $ty, err);
-            }
-        }
-    );
-    (map $buf:expr, $name:expr, $ty:expr, $x:expr) => (
-        match $x {
-            Ok(val) => val,
-            Err(err) => {
-                try_collect!(_map $buf, $name, $ty, err);
-                try_collect!(_return $buf, $ty, err);
-            }
-        }
-    );
-    ($buf:expr, $ty:expr, $x:expr) => (
-        match $x {
-            Ok(val) => val,
-            Err(err) => {
-                try_collect!(_return $buf, $ty, err);
-            }
-        }
-    );
-);
-
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum NbtType {
-    Blob(NbtBlob),
-    Value(NbtValue)
-}
-
 /// Errors that may be encountered when constructing, parsing, or encoding
 /// `NbtValue` and `NbtBlob` objects.
 ///
@@ -101,9 +40,6 @@ pub enum NbtError {
     /// An error for when NBT binary representations contain invalid UTF-8
     /// strings.
     InvalidUtf8,
-    /// This is a such error, but maybe returns data when error occurs.
-    /// It should be useful for unexcepted error process or expand id type process at outside rust codes.
-    InterruptError(NbtType, Box<NbtError>),
 }
 
 impl FromError<io::Error> for NbtError {
@@ -128,14 +64,6 @@ impl FromError<byteorder::Error> for NbtError {
         }
     }
 }
-
-impl FromError<Box<NbtError>> for NbtError {
-    fn from_error(err: Box<NbtError>) -> NbtError {
-        *err
-    }
-    
-}
-
 impl FromError<NbtError> for io::Error {
     fn from_error(e: NbtError) -> io::Error {
         match e {
@@ -150,7 +78,6 @@ impl FromError<NbtError> for io::Error {
                 io::Error::new(InvalidInput, "root value must be a Compound (0x0a)", None),
             NbtError::InvalidUtf8 =>
                 io::Error::new(InvalidInput, "string is not UTF-8", None),
-            NbtError::InterruptError(_, err) => FromError::from_error(*err),
         }
     }
 }
@@ -163,13 +90,6 @@ impl ToNbtValue for NbtValue {
     #[inline]
     fn to_nbt(self) -> NbtValue {
         self
-    }
-}
-
-impl <'a> ToNbtValue for &'a str {
-    #[inline]
-    fn to_nbt(self) -> NbtValue {
-        NbtValue::String(self.to_string())
     }
 }
 
@@ -349,8 +269,7 @@ impl NbtValue {
                 let len = try!(src.read_i32::<BigEndian>()) as usize;
                 let mut buf = Vec::with_capacity(len);
                 for _ in range(0, len) {
-                    let x = try_collect!(buf, NbtValue::ByteArray, src.read_i8());
-                    buf.push(x);
+                    buf.push(try!(src.read_i8()));
                 }
                 Ok(NbtValue::ByteArray(buf))
             },
@@ -364,17 +283,16 @@ impl NbtValue {
                 let len = try!(src.read_i32::<BigEndian>()) as usize;
                 let mut buf = Vec::with_capacity(len);
                 for _ in range(0, len) {
-                    let x = try_collect!(list buf, NbtValue::List, NbtValue::from_reader(id, src));
-                    buf.push(x);
+                    buf.push(try!(NbtValue::from_reader(id, src));
                 }
                 Ok(NbtValue::List(buf))
             },
             0x0a => { // Compound
                 let mut buf = HashMap::new();
                 loop {
-                    let (id, name) = try_collect!(buf, NbtValue::Compound, NbtValue::read_header(src));
+                    let (id, name) = try!(NbtValue::read_header(src));
                     if id == 0x00 { break; }
-                    let tag = try_collect!(map buf, name, NbtValue::Compound, NbtValue::from_reader(id, src));
+                    let tag = try!( NbtValue::from_reader(id, src));
                     buf.insert(name, tag);
                 }
                 Ok(NbtValue::Compound(buf))
@@ -383,8 +301,7 @@ impl NbtValue {
                 let len = try!(src.read_i32::<BigEndian>()) as usize;
                 let mut buf = Vec::with_capacity(len);
                 for _ in range(0, len) {
-                    let x = try_collect!(buf, NbtValue::IntArray, src.read_i32::<BigEndian>());
-                    buf.push(x);
+                    buf.push(try!(src.read_i32::<BigEndian>()));
                 }
                 Ok(NbtValue::IntArray(buf))
             },
@@ -425,9 +342,9 @@ pub struct NbtBlob {
 impl NbtBlob {
     /// Create a new NBT file format representation with the given name.
     #[inline]
-    pub fn new<T: ToString>(title: T) -> NbtBlob {
+    pub fn new(title: String) -> NbtBlob {
         let map: HashMap<String, NbtValue> = HashMap::new();
-        NbtBlob { title: title.to_string(), content: NbtValue::Compound(map)}
+        NbtBlob { title: title, content: NbtValue::Compound(map)}
     }
     /// Extracts an `NbtBlob` object from an `io::Read` source.
     pub fn from_reader(mut src: &mut io::Read) -> Result<NbtBlob, NbtError> {
@@ -497,12 +414,10 @@ impl NbtBlob {
     /// This method will also return an error if a `NbtValue::List` with
     /// heterogeneous elements is passed in, because this is illegal in the NBT
     /// file format.
-    pub fn insert<S: ToString, T: ToNbtValue>(&mut self, name: S, value: T) -> Result<(), NbtError> {
+    pub fn insert(&mut self, name: String, value: NbtValue) -> Result<(), NbtError> {
         // The follow prevents `List`s with heterogeneous tags from being
         // inserted into the file. It would be nicer to return an error, but
         // this would depart from the `HashMap` API for `insert`.
-        let value = value.to_nbt();
-        let name = name.to_string();
         if let NbtValue::List(ref vals) = value {
             if vals.len() != 0 {
                 let first_id = vals[0].id();
@@ -671,68 +586,6 @@ mod tests {
     }
 
     #[test]
-    fn nbt_nested_compound_without_end() {
-        let mut inner = HashMap::new();
-        inner.insert("test".to_string(), NbtValue::Byte(123));
-        let mut nbt = NbtBlob::new("".to_string());
-        nbt.insert("inner".to_string(), NbtValue::Compound(inner)).unwrap();
-
-        let bytes = vec![
-            0x0a,
-                0x00, 0x00,
-                0x0a,
-                    0x00, 0x05,
-                    0x69, 0x6e, 0x6e, 0x65, 0x72,
-                    0x01,
-                    0x00, 0x04,
-                    0x74, 0x65, 0x73, 0x74,
-                    0x7b,
-        ];
-
-        // Test decoding.
-        let mut src = io::Cursor::new(bytes);
-        match NbtBlob::from_reader(&mut src){
-            Ok(val) => panic!("val: {:?}, How did you...?", val),
-            Err(err) => match err {
-                NbtError::InterruptError(val, err) => {
-                    println!("NbtError::InterruptError(val, err): {:?}, {:?}", val, err);
-                    assert_eq!(&val, &NbtType::Blob(nbt))
-                },
-                _ => panic!("err: {:?}, What? wheres my data?", err)
-            }
-        }
-    }
-
-    #[test]
-    fn nbt_nested_compound_without_end2() {
-        let inner = HashMap::new();
-        let mut nbt = NbtBlob::new("".to_string());
-        nbt.insert("inner".to_string(), NbtValue::Compound(inner)).unwrap();
-
-        let bytes = vec![
-            0x0a,
-                0x00, 0x00,
-                0x0a,
-                    0x00, 0x05,
-                    0x69, 0x6e, 0x6e, 0x65, 0x72,
-                    0x01,
-        ];
-        
-        // Test decoding.
-        let mut src = io::Cursor::new(bytes);
-        match NbtBlob::from_reader(&mut src){
-            Ok(val) => panic!("val: {:?}, How did you...?", val),
-            Err(err) => match err {
-                NbtError::InterruptError(val, err) => {
-                    println!("NbtError::InterruptError(val, err): {:?}, {:?}", val, err);
-                    assert_eq!(&val, &NbtType::Blob(nbt))
-                },
-                _ => panic!("err: {:?}, What? wheres my data?", err)
-            }
-        }
-    }
-
-    #[test]
     fn nbt_empty_list() {
         let mut nbt = NbtBlob::new("".to_string());
         nbt.insert("list".to_string(), NbtValue::List(Vec::new())).unwrap();
@@ -781,19 +634,8 @@ mod tests {
                     0x01,
             0x00
         ];
-        let a;
-        let b;
-        match NbtBlob::from_reader(&mut io::Cursor::new(bytes.as_slice())).err().unwrap() {
-            NbtError::InterruptError(NbtType::Blob(x), y) => {
-                a = x;
-                b = y;
-            }
-            x => unreachable!("Huh? that shouldn't happened. {:?}", x)
-        }
-        let (c, d) = ( NbtBlob::new("".to_string()), Box::new(NbtError::InvalidTypeId(15)));
-
-        assert_eq!(a, c);
-        assert_eq!(b, d);
+        assert_eq!(NbtBlob::from_reader(&mut io::Cursor::new(bytes.as_slice())),
+                   Err(NbtError::InvalidTypeId(15)));
     }
 
     #[test]
@@ -838,34 +680,4 @@ mod tests {
         assert_eq!(&nbt, &gz_file);
     }
 
-    #[test]
-    fn nbt_new_value() {
-        // We are not Java coder :(
-        let mut a = NbtBlob::new("456123".to_string());
-        a.insert("name".to_string(), NbtValue::String("Herobrine".to_string())).unwrap();
-        a.insert("health".to_string(), NbtValue::Byte(100)).unwrap();
-        a.insert("food".to_string(), NbtValue::Float(20.0)).unwrap();
-        a.insert("emeralds".to_string(), NbtValue::Short(12345)).unwrap();
-        a.insert("timestamp".to_string(), NbtValue::Int(1424778774)).unwrap();
-
-        let mut b = NbtBlob::new("456123");
-        b.insert("name", "Herobrine".to_nbt()).unwrap();
-        b.insert("health", 100i8.to_nbt()).unwrap();
-        b.insert("food", 20.0f32.to_nbt()).unwrap();
-        b.insert("emeralds", 12345i16.to_nbt()).unwrap();
-        b.insert("timestamp", 1424778774i32.to_nbt()).unwrap();
-
-        // We are Rustocean :)
-        let mut c = NbtBlob::new(456123);
-        c.insert("name", "Herobrine").unwrap();
-        c.insert("health", 100i8).unwrap();
-        c.insert("food", 20.0f32).unwrap();
-        c.insert("emeralds", 12345i16).unwrap();
-        c.insert("timestamp", 1424778774i32).unwrap();
-
-        assert_eq!(&a, &b);
-        assert_eq!(&a, &c);
-
-        assert_eq!(NbtBlob::new(12345), NbtBlob::new("12345".to_string()));
-    }
 }
