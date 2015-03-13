@@ -114,6 +114,7 @@ macro_rules! nbt_define(
 );
 
 nbt_define! (
+    NbtValue
     i8, Byte, 0x01;
     i16, Short, 0x02;
     i32, Int, 0x03;
@@ -341,11 +342,11 @@ pub struct NbtBlob {
 
 impl NbtBlob {
     /// Create a new NBT file format representation with the given name.
-    #[inline]
     pub fn new(title: String) -> NbtBlob {
         let map: HashMap<String, NbtValue> = HashMap::new();
-        NbtBlob { title: title, content: NbtValue::Compound(map)}
+        NbtBlob { title: title, content: NbtValue::Compound(map) }
     }
+
     /// Extracts an `NbtBlob` object from an `io::Read` source.
     pub fn from_reader(mut src: &mut io::Read) -> Result<NbtBlob, NbtError> {
         let header = try!(NbtValue::read_header(src));
@@ -355,23 +356,7 @@ impl NbtBlob {
         if header.0 != 0x0a {
             return Err(NbtError::NoRootCompound);
         }
-        let content = match NbtValue::from_reader(header.0, src) {
-            Ok(val) => val,
-            Err(err) => match err {
-                NbtError::InterruptError(x, err) => {
-                    return Err(
-                        NbtError::InterruptError(
-                            match x {
-                                NbtType::Value(x) => NbtType::Blob( NbtBlob { title: header.1, content: x } ),
-                                x => x,
-                            },
-                            err
-                        )
-                    )
-                },
-                _ => return Err(err)
-            }
-        };
+        let content = try!(NbtValue::from_reader(header.0, src));
         Ok(NbtBlob { title: header.1, content: content })
     }
     /// Extracts an `NbtBlob` object from an `io::Read` source that is
