@@ -64,13 +64,12 @@ impl FromError<byteorder::Error> for NbtError {
         }
     }
 }
-
 impl FromError<NbtError> for io::Error {
     fn from_error(e: NbtError) -> io::Error {
         match e {
             NbtError::IoError(e) => e,
             NbtError::ByteOrderError(_) =>
-                io::Error::new(InvalidInput, "invalid byte ordering", None),
+                io::Error::new(InvalidInput, "invalid byte ordering, or value length, or got EOF", None),
             NbtError::InvalidTypeId(id) =>
                 io::Error::new(InvalidInput, "invalid NbtValue id", Some(format!("id = {}", id))),
             NbtError::HeterogeneousList =>
@@ -83,23 +82,54 @@ impl FromError<NbtError> for io::Error {
     }
 }
 
-/// A value which can be represented in the Named Binary Tag (NBT) file format.
-#[derive(Clone, Debug, PartialEq)]
-pub enum NbtValue {
-    Byte(i8),
-    Short(i16),
-    Int(i32),
-    Long(i64),
-    Float(f32),
-    Double(f64),
-    ByteArray(Vec<i8>),
-    String(String),
-    List(Vec<NbtValue>),
-    Compound(HashMap<String, NbtValue>),
-    IntArray(Vec<i32>),
+pub trait ToNbtValue {
+    fn to_nbt(self) -> NbtValue;
 }
 
+impl ToNbtValue for NbtValue {
+    #[inline]
+    fn to_nbt(self) -> NbtValue {
+        self
+    }
+}
+
+macro_rules! nbt_define(
+    (
+        $($ty:ty, $name:ident, $id:expr;)*
+    ) => (
+        /// A value which can be represented in the Named Binary Tag (NBT) file format.
+        #[derive(Clone, Debug, PartialEq)]
+        pub enum NbtValue {
+            $($name($ty),)*
+        }
+        $(
+            impl ToNbtValue for $ty {
+                #[inline]
+                fn to_nbt(self) -> NbtValue {
+                    NbtValue::$name(self)
+                }
+            }
+        )*
+    )
+);
+
+nbt_define! (
+    NbtValue
+    i8, Byte, 0x01;
+    i16, Short, 0x02;
+    i32, Int, 0x03;
+    i64, Long, 0x04;
+    f32, Float, 0x05;
+    f64, Double, 0x06;
+    Vec<i8>, ByteArray, 0x07;
+    String, String, 0x08;
+    Vec<NbtValue>, List, 0x09;
+    HashMap<String, NbtValue>, Compound, 0x0a;
+    Vec<i32>, IntArray, 0x0b;
+);
+
 impl NbtValue {
+
     /// The type ID of this `NbtValue`, which is a single byte in the range
     /// `0x01` to `0x0b`.
     pub fn id(&self) -> u8 {
@@ -254,7 +284,7 @@ impl NbtValue {
                 let len = try!(src.read_i32::<BigEndian>()) as usize;
                 let mut buf = Vec::with_capacity(len);
                 for _ in range(0, len) {
-                    buf.push(try!(NbtValue::from_reader(id, src)));
+                    buf.push(try!(NbtValue::from_reader(id, src));
                 }
                 Ok(NbtValue::List(buf))
             },
@@ -263,7 +293,7 @@ impl NbtValue {
                 loop {
                     let (id, name) = try!(NbtValue::read_header(src));
                     if id == 0x00 { break; }
-                    let tag = try!(NbtValue::from_reader(id, src));
+                    let tag = try!( NbtValue::from_reader(id, src));
                     buf.insert(name, tag);
                 }
                 Ok(NbtValue::Compound(buf))
@@ -329,7 +359,6 @@ impl NbtBlob {
         let content = try!(NbtValue::from_reader(header.0, src));
         Ok(NbtBlob { title: header.1, content: content })
     }
-
     /// Extracts an `NbtBlob` object from an `io::Read` source that is
     /// compressed using the Gzip format.
     pub fn from_gzip(src: &mut io::Read) -> Result<NbtBlob, NbtError> {
@@ -403,7 +432,7 @@ impl<'a> Index<&'a str> for NbtBlob {
     type Output = NbtValue;
 
     fn index<'b>(&'b self, s: &&'a str) -> &'b NbtValue {
-        match self.content {
+        match self.content {    
             NbtValue::Compound(ref v) => v.get(*s).unwrap(),
             _ => unreachable!()
         }
@@ -635,4 +664,5 @@ mod tests {
         let gz_file = NbtBlob::from_gzip(&mut io::Cursor::new(gzip_dst)).unwrap();
         assert_eq!(&nbt, &gz_file);
     }
+
 }
