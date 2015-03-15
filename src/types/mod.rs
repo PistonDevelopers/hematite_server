@@ -10,7 +10,7 @@ mod varnum;
 
 pub use self::arr::Arr;
 pub use self::chunk::{Chunk, ChunkColumn};
-pub use self::nbt::{NbtBlob, NbtError, NbtValue};
+pub use nbt::{NbtBlob, NbtError, NbtValue};
 pub use self::pos::BlockPos;
 pub use self::slot::Slot;
 pub use self::uuid::UuidString;
