@@ -1,6 +1,6 @@
 [package]
 
-name = "hem-nbt"
+name = "hematite-nbt"
 version = "0.0.1"
 authors = [
     "Fenhl <fenhl@fenhl.net>",
@@ -9,7 +9,7 @@ authors = [
 ]
 
 [lib]
-name = "hem-nbt"
+name = "nbt"
 path = "lib.rs"
 
 [dependencies]

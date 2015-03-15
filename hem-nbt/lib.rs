@@ -32,8 +32,6 @@ use flate2::write::{GzEncoder, ZlibEncoder};
 pub enum NbtError {
     /// Wraps errors emitted by methods during I/O operations.
     IoError(io::Error),
-    /// Wraps errors emitted by during big/little endian encoding and decoding.
-    ByteOrderError(byteorder::Error),
     /// An error for when an unknown type ID is encountered in decoding NBT
     /// binary representations. Includes the ID in question.
     InvalidTypeId(u8),
@@ -45,6 +43,9 @@ pub enum NbtError {
     /// An error for when NBT binary representations contain invalid UTF-8
     /// strings.
     InvalidUtf8,
+    /// An error for when NBT binary representations are missing end tags,
+    /// contain fewer bytes than advertised, or are otherwise incomplete.
+    IncompleteNbtValue,
 }
 
 impl FromError<io::Error> for NbtError {
@@ -61,11 +62,11 @@ impl FromError<string::FromUtf8Error> for NbtError {
 
 impl FromError<byteorder::Error> for NbtError {
     fn from_error(err: byteorder::Error) -> NbtError {
-        // Promote byteorder's I/O errors to NbtError's I/O errors.
-        if let byteorder::Error::Io(e) = err {
-            NbtError::IoError(e)
-        } else {
-            NbtError::ByteOrderError(err)
+        match err {
+            // Promote byteorder's I/O errors to NbtError's I/O errors.
+            byteorder::Error::Io(e) => NbtError::IoError(e),
+            // Anything else is really an incomplete value.
+            byteorder::Error::UnexpectedEOF => NbtError::IncompleteNbtValue
         }
     }
 }
@@ -74,8 +75,6 @@ impl FromError<NbtError> for io::Error {
     fn from_error(e: NbtError) -> io::Error {
         match e {
             NbtError::IoError(e) => e,
-            NbtError::ByteOrderError(_) =>
-                io::Error::new(InvalidInput, "invalid byte ordering", None),
             NbtError::InvalidTypeId(id) =>
                 io::Error::new(InvalidInput, "invalid NbtValue id", Some(format!("id = {}", id))),
             NbtError::HeterogeneousList =>
@@ -84,6 +83,8 @@ impl FromError<NbtError> for io::Error {
                 io::Error::new(InvalidInput, "root value must be a Compound (0x0a)", None),
             NbtError::InvalidUtf8 =>
                 io::Error::new(InvalidInput, "string is not UTF-8", None),
+            NbtError::IncompleteNbtValue =>
+                io::Error::new(InvalidInput, "data does not represent a complete NbtValue", None),
         }
     }
 }
@@ -223,8 +224,7 @@ impl NbtValue {
         // Extract the name.
         let name_len = try!(src.read_u16::<BigEndian>());
         let name = if name_len != 0 {
-            let bytes = try!(src.read_exact(name_len as usize));
-            try!(String::from_utf8(bytes))
+            try!(read_utf8(src, name_len as usize))
         } else {
             "".to_string()
         };
@@ -251,8 +251,7 @@ impl NbtValue {
             },
             0x08 => { // String
                 let len = try!(src.read_u16::<BigEndian>()) as usize;
-                let bytes = try!(src.read_exact(len as usize));
-                Ok(NbtValue::String(try!(String::from_utf8(bytes))))
+                Ok(NbtValue::String(try!(read_utf8(src, len as usize))))
             },
             0x09 => { // List
                 let id = try!(src.read_u8());
@@ -297,20 +296,17 @@ impl NbtValue {
 /// (through Gzip or zlib compression) methods.
 ///
 /// ```rust
-/// extern crate "hem-nbt" as nbt;
 /// use nbt::{NbtBlob, NbtError, NbtValue};
 ///
 /// // Create a `NbtBlob` from key/value pairs.
-/// fn main() {
-///     let mut nbt = NbtBlob::new("".to_string());
-///     nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
-///     nbt.insert("health".to_string(), NbtValue::Byte(100));
-///     nbt.insert("food".to_string(), NbtValue::Float(20.0));
+/// let mut nbt = NbtBlob::new("".to_string());
+/// nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
+/// nbt.insert("health".to_string(), NbtValue::Byte(100));
+/// nbt.insert("food".to_string(), NbtValue::Float(20.0));
 ///
-///     // Write a compressed binary representation to a byte array.
-///     let mut dst = Vec::new();
-///     nbt.write_zlib(&mut dst);
-/// }
+/// // Write a compressed binary representation to a byte array.
+/// let mut dst = Vec::new();
+/// nbt.write_zlib(&mut dst);
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct NbtBlob {
@@ -418,24 +414,21 @@ impl<'a> Index<&'a str> for NbtBlob {
     }
 }
 
-trait ReadExactExt: io::Read {
-    /// Returns a `Vec<u8>` containing the next `len` bytes in the reader.
-    ///
-    /// Adapted from `byteorder::read_full`.
-    fn read_exact(&mut self, len: usize) -> io::Result<Vec<u8>> {
-        let mut buf = vec![0; len];
-        let mut n_read = 0usize;
-        while n_read < buf.len() {
-            match try!(self.read(&mut buf[n_read..])) {
-                0 => { return Err(io::Error::new(io::ErrorKind::InvalidInput, "unexpected EOF", None)); }
-                n => n_read += n
-            }
-        }
-        Ok(buf)
-    }
-}
 
-impl<R: io::Read> ReadExactExt for R {}
+/// Returns a `Vec<u8>` containing the next `len` bytes in the reader.
+///
+/// Adapted from `byteorder::read_full`.
+fn read_utf8(mut src: &mut io::Read, len: usize) -> Result<String, NbtError> {
+    let mut bytes = vec![0; len];
+    let mut n_read = 0usize;
+    while n_read < bytes.len() {
+        match try!(src.read(&mut bytes[n_read..])) {
+            0 => return Err(NbtError::IncompleteNbtValue),
+            n => n_read += n
+        }
+    }
+    Ok(try!(String::from_utf8(bytes)))
+}
 
 #[cfg(test)]
 mod tests {
@@ -589,6 +582,23 @@ mod tests {
         // Will fail, because the root is not a compound.
         assert_eq!(NbtBlob::from_reader(&mut io::Cursor::new(bytes.as_slice())),
                 Err(NbtError::NoRootCompound));
+    }
+
+    #[test]
+    fn nbt_no_end_tag() {
+        let bytes = vec![
+            0x0a,
+                0x00, 0x00,
+                0x09,
+                    0x00, 0x04,
+                    0x6c, 0x69, 0x73, 0x74,
+                    0x01,
+                    0x00, 0x00, 0x00, 0x00
+        ];
+
+        // Will fail, because there is no end tag.
+        assert_eq!(NbtBlob::from_reader(&mut io::Cursor::new(bytes.as_slice())),
+                Err(NbtError::IncompleteNbtValue));
     }
 
     #[test]

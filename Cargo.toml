@@ -23,5 +23,5 @@ byteorder = "*"
 flate2 = "*"
 uuid = "*"
 
-[dependencies.hem-nbt]
+[dependencies.hematite-nbt]
 path = "hem-nbt"
