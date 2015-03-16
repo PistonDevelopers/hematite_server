@@ -4,10 +4,9 @@ use std::io::prelude::*;
 use std::io;
 use std::str::FromStr;
 
-use num::FromPrimitive;
-
 use packet::Protocol;
 
+use num::FromPrimitive;
 use rustc_serialize::json::{Json, ToJson};
 
 macro_rules! enum_protocol_impl {

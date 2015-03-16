@@ -18,7 +18,7 @@ macro_rules! parse {
         try!($value.parse().map_err(|_: ParseIntError| io::Error::new(io::ErrorKind::InvalidInput, "invalid i32 value")))
     };
     ($value:ident, u16) => {
-        try!($value.parse().map_err(|_: ParseIntError| io::Error::new(io::ErrorKind::InvalidInput, "invalid u16 value", None)))
+        try!($value.parse().map_err(|_: ParseIntError| io::Error::new(io::ErrorKind::InvalidInput, "invalid u16 value")))
     }
 }
 
