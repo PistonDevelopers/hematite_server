@@ -1,7 +1,6 @@
 //! MC Named Binary Tag type.
 
 #![feature(core)]
-#![feature(fs)]
 #![feature(io)]
 #![feature(test)]
 
