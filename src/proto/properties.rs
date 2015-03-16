@@ -16,6 +16,9 @@ macro_rules! parse {
     };
     ($value:ident, i32) => {
         try!($value.parse().map_err(|_: ParseIntError| io::Error::new(io::ErrorKind::InvalidInput, "invalid i32 value")))
+    };
+    ($value:ident, u16) => {
+        try!($value.parse().map_err(|_: ParseIntError| io::Error::new(io::ErrorKind::InvalidInput, "invalid u16 value", None)))
     }
 }
 
@@ -118,7 +121,7 @@ server_properties_impl! {
     { resource_pack, "resource-pack", String, "".to_string() }
     { resource_pack_hash, "resource-pack-hash", String, "".to_string() }
     { server_ip, "server-ip", String, "".to_string() }
-    { server_port, "server-port", i32, 25565 }
+    { server_port, "server-port", u16, 25565 }
     { snooper_enabled, "snooper-enabled", bool, true }
     { spawn_animals, "spawn-animals", bool, true }
     { spawn_monsters, "spawn-monsters", bool, true }
