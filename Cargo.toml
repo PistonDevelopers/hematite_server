@@ -21,6 +21,8 @@ path = "src/lib.rs"
 [dependencies]
 byteorder = "*"
 flate2 = "*"
+rustc-serialize = "*"
+time = "*"
 uuid = "*"
 
 [dependencies.hematite-nbt]

@@ -59,6 +59,7 @@ pub enum NextState {
 
 mod prelude {
     pub use packet::{BlockChangeRecord, Protocol, PacketRead, PacketWrite, Stat, NextState};
+    pub use proto::slp;
     pub use types::consts::*;
     pub use types::{Arr, BlockPos, NbtBlob, Slot, UuidString, Var};
 
@@ -455,7 +456,7 @@ pub mod play {
 }
 pub mod status {
     pub mod clientbound { packets! {
-        0x00 => StatusResponse { response: String }
+        0x00 => StatusResponse { response: slp::Response }
         0x01 => Pong { time: i64 }
     } }
     pub mod serverbound { packets! {
