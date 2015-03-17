@@ -58,10 +58,10 @@ pub enum NextState {
 }
 
 mod prelude {
-    pub use packet::{BlockChangeRecord, Protocol, PacketRead, PacketWrite, Stat, NextState};
+    pub use packet::{BlockChangeRecord, ChunkMeta, Protocol, PacketRead, PacketWrite, Stat, NextState};
     pub use proto::slp;
     pub use types::consts::*;
-    pub use types::{Arr, BlockPos, NbtBlob, Slot, UuidString, Var};
+    pub use types::{Arr, BlockPos, ChunkColumn, NbtBlob, Slot, UuidString, Var};
 
     pub use std::io;
     pub use std::io::prelude::*;
@@ -301,6 +301,12 @@ proto_structs! {
         block_id: Var<i32>
     }
 
+    ChunkMeta {
+        x: i32,
+        z: i32,
+        mask: u16
+    }
+
     Stat {
         name: String,
         value: Var<i32>
@@ -352,7 +358,55 @@ pub mod play {
         0x23 => BlockChange { location: BlockPos, block_id: Var<i32> }
         0x24 => BlockAction { location: BlockPos, byte1: u8, byte2: u8, block_type: Var<i32> }
         0x25 => BlockBreakAnimation { entity_id: Var<i32>, location: BlockPos, destroy_stage: i8 }
-        // 0x26 => MapChunkBulk { sky_light_sent: bool, chunks: Vec<Chunk>; impl Protocol for MapChunkBulk { ... } } // PROBLEM: chunks is encoded as two arrays, the first one specifying which sections of each chunk column are empty
+        0x26 => ChunkDataBulk { sky_light_sent: bool, chunk_meta: Vec<ChunkMeta>, chunk_data: Vec<ChunkColumn>;
+            impl Protocol for ChunkDataBulk {
+                type Clean = Self;
+                fn proto_len(this: &Self) -> usize {
+                    use std::iter::AdditiveIterator;
+
+                    let columns = this.chunk_meta.len() as i32;
+                    1 // sky_light_sent(bool) len is constant
+                    + <Var<i32> as Protocol>::proto_len(&columns)
+                    + this.chunk_meta.iter().map(|cm| <ChunkMeta as Protocol>::proto_len(cm)).sum()
+                    + this.chunk_data.iter().map(|cd| cd.len()).sum()
+                }
+                fn proto_encode(this: &Self, mut dst: &mut Write) -> io::Result<()> {
+                    try!(<bool as Protocol>::proto_encode(&this.sky_light_sent, dst));
+                    let columns = this.chunk_meta.len() as i32;
+                    try!(<Var<i32> as Protocol>::proto_encode(&columns, dst));
+                    for cm in this.chunk_meta.iter() {
+                        try!(<ChunkMeta as Protocol>::proto_encode(cm, dst));
+                    }
+                    for cd in this.chunk_data.iter() {
+                        let chunk_column = try!(cd.encode());
+                        try!(dst.write_all(&chunk_column));
+                    }
+                    Ok(())
+                }
+                fn proto_decode(mut src: &mut Read) -> io::Result<ChunkDataBulk> {
+                    let sky_light_sent = try!(<bool as Protocol>::proto_decode(src));
+                    let columns = try!(<Var<i32> as Protocol>::proto_decode(src));
+                    let mut chunk_meta = Vec::with_capacity(columns as usize);
+                    for cm in chunk_meta.iter_mut() {
+                        *cm = try!(<ChunkMeta as Protocol>::proto_decode(src));
+                    }
+                    // Read all encoded ChunkColumns, buffer size starts at 4KB, probably will get bigger
+                    let mut data = Vec::with_capacity(1 << 12);
+                    try!(src.read_to_end(&mut data));
+                    let mut src = io::Cursor::new(data);
+                    let mut chunk_data = Vec::with_capacity(columns as usize);
+                    for (cd, cm) in chunk_data.iter_mut().zip(chunk_meta.iter()) {
+                        // chunk_data, mask, continuous, sky_light
+                        *cd = try!(ChunkColumn::decode(&mut src, cm.mask, true, true));
+                    }
+                    Ok(ChunkDataBulk{
+                        sky_light_sent: sky_light_sent,
+                        chunk_meta: chunk_meta,
+                        chunk_data: chunk_data,
+                    })
+                }
+            }
+        }
         0x27 => Explosion { position: [f32; 3], radius: f32, records: Arr<i32, [i8; 3]>, player_motion: [f32; 3] }
         0x28 => Effect { effect_id: i32, location: BlockPos, data: i32, disable_relative_volume: bool }
         0x29 => SoundEffect { name: String, position: [i32; 3], volume: f32, pitch: u8 }
