@@ -11,6 +11,7 @@ extern crate test;
 
 use std::collections::HashMap;
 use std::error::FromError;
+use std::fmt;
 use std::io;
 use std::io::ErrorKind::InvalidInput;
 use std::iter::AdditiveIterator;
@@ -121,6 +122,23 @@ impl NbtValue {
             NbtValue::List(_)      => 0x09,
             NbtValue::Compound(_)  => 0x0a,
             NbtValue::IntArray(_)  => 0x0b
+        }
+    }
+
+    /// A string representation of this tag.
+    fn to_string(&self) -> &str {
+        match *self {
+            NbtValue::Byte(_)      => "TAG_Byte",
+            NbtValue::Short(_)     => "TAG_Short",
+            NbtValue::Int(_)       => "TAG_Int",
+            NbtValue::Long(_)      => "TAG_Long",
+            NbtValue::Float(_)     => "TAG_Float",
+            NbtValue::Double(_)    => "TAG_Double",
+            NbtValue::ByteArray(_) => "TAG_ByteArray",
+            NbtValue::String(_)    => "TAG_String",
+            NbtValue::List(_)      => "TAG_List",
+            NbtValue::Compound(_)  => "TAG_Compound",
+            NbtValue::IntArray(_)  => "TAG_IntArray"
         }
     }
 
@@ -285,6 +303,40 @@ impl NbtValue {
     }
 }
 
+impl fmt::Display for NbtValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            NbtValue::Byte(v)      => write!(f, "{}", v),
+            NbtValue::Short(v)     => write!(f, "{}", v),
+            NbtValue::Int(v)       => write!(f, "{}", v),
+            NbtValue::Long(v)      => write!(f, "{}", v),
+            NbtValue::Float(v)     => write!(f, "{}", v),
+            NbtValue::Double(v)    => write!(f, "{}", v),
+            NbtValue::ByteArray(ref v) => write!(f, "{:?}", v),
+            NbtValue::String(ref v)    => write!(f, "{}", v),
+            NbtValue::List(ref v)      => {
+                if v.len() == 0 {
+                    write!(f, "zero entries")
+                } else {
+                    write!(f, "{} entries of type {}\n{{\n", v.len(), v[0].to_string());
+                    for tag in v {
+                        write!(f, "{}(None): {}\n", tag.to_string(), tag);
+                    }
+                    write!(f, "}}")
+                }
+            },
+            NbtValue::Compound(ref v)  => {
+                write!(f, "TAG_Compound(\"\"): {} entry(ies)\n{{\n", v.len());
+                for (name, tag) in v {
+                    write!(f, "{}(\"{}\"): {}\n", tag.to_string(), name, tag);
+                }
+                write!(f, "}}")
+            },
+            NbtValue::IntArray(ref v)  => write!(f, "{:?}", v)
+        }
+    }
+}
+
 /// An object in the Named Binary Tag (NBT) file format.
 ///
 /// This is essentially a map of names to `NbtValue`s, with an optional top-
@@ -414,6 +466,11 @@ impl<'a> Index<&'a str> for NbtBlob {
     }
 }
 
+impl fmt::Display for NbtBlob {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.content)
+    }
+}
 
 /// Returns a `Vec<u8>` containing the next `len` bytes in the reader.
 ///
