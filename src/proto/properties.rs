@@ -20,7 +20,7 @@ macro_rules! parse {
 }
 
 macro_rules! server_properties_impl {
-    ($({ $field:ident, $hyphen:expr, $fty:ident, $default:expr})+) => {
+    ($({ $field:ident, $fty:ident, $default:expr})+) => {
         /// Vanilla server.properties
         ///
         /// Documentation of each filed here: http://minecraft.gamepedia.com/Server.properties
@@ -68,7 +68,7 @@ macro_rules! server_properties_impl {
                 // only writes the 3 left if they are not using default values. It
                 // also writes them unsorted (possibly because they are stored in a
                 // HashMap).
-                $(try!(write!(&mut file, "{}={}\n", $hyphen, self.$field));)*
+                $(try!(write!(&mut file, "{}={}\n", stringify!($field), self.$field));)*
                 Ok(())
             }
         }
@@ -87,44 +87,44 @@ macro_rules! server_properties_impl {
 }
 
 server_properties_impl! {
-    { allow_flight, "allow-flight", bool, false }
-    { allow_nether, "allow-nether", bool, true }
-    { announce_player_achievements, "announce-player-achievements", bool, true }
-    { difficulty, "difficulty", i32, 1 }
-    { enable_query, "enable-query", bool, false }
-    { enable_rcon, "enable-rcon", bool, false }
-    { enable_command_block, "enable-command-block", bool, false }
-    { force_gamemode, "force-gamemode", bool, false }
-    { gamemode, "gamemode", i32, 0 }
-    { generate_structures, "generate-structures", bool, true }
-    { generator_settings, "generator-settings", String, "".to_string() }
-    { hardcore, "hardcore", bool, false }
-    { level_name, "level-name", String, "world".to_string() }
-    { level_seed, "level-seed", String, "".to_string() }
-    { level_type, "level-type", String, "DEFAULT".to_string() }
-    { max_build_height, "max-build-height", i32, 256 }
-    { max_players, "max-players", i32, 20 }
-    { max_tick_time, "max-tick-time", i32, 60000 }
-    { max_world_size, "max-world-size", i32, 29999984 }
-    { motd, "motd", String, "A Minecraft Server".to_string() }
-    { network_compression_threshold, "network-compression-threshold", i32, 256 }
-    { online_mode, "online-mode", bool, true }
-    { op_permission_level, "op-permission-level", i32, 4 }
-    { player_idle_timeout, "player-idle-timeout", i32, 0 }
-    { pvp, "pvp", bool, true }
-    { query_port, "query.port", i32, 25565 }
-    { rcon_password, "rcon.password", String, "".to_string() }
-    { rcon_port, "rcon.port", i32, 25575 }
-    { resource_pack, "resource-pack", String, "".to_string() }
-    { resource_pack_hash, "resource-pack-hash", String, "".to_string() }
-    { server_ip, "server-ip", String, "".to_string() }
-    { server_port, "server-port", i32, 25565 }
-    { snooper_enabled, "snooper-enabled", bool, true }
-    { spawn_animals, "spawn-animals", bool, true }
-    { spawn_monsters, "spawn-monsters", bool, true }
-    { spawn_npcs, "spawn-npcs", bool, true }
-    { spawn_protection, "spawn-protection", i32, 16 }
-    { use_native_transport, "use-native-transport", bool, true }
-    { view_distance, "view-distance", i32, 10 }
-    { white_list, "white-list", bool, false }
+    { allow_flight, bool, false }
+    { allow_nether, bool, true }
+    { announce_player_achievements, bool, true }
+    { difficulty, i32, 1 }
+    { enable_query, bool, false }
+    { enable_rcon, bool, false }
+    { enable_command_block, bool, false }
+    { force_gamemode, bool, false }
+    { gamemode, i32, 0 }
+    { generate_structures, bool, true }
+    { generator_settings, String, "".to_string() }
+    { hardcore, bool, false }
+    { level_name, String, "world".to_string() }
+    { level_seed, String, "".to_string() }
+    { level_type, String, "DEFAULT".to_string() }
+    { max_build_height, i32, 256 }
+    { max_players, i32, 20 }
+    { max_tick_time, i32, 60000 }
+    { max_world_size, i32, 29999984 }
+    { motd, String, "A Minecraft Server".to_string() }
+    { network_compression_threshold, i32, 256 }
+    { online_mode, bool, true }
+    { op_permission_level, i32, 4 }
+    { player_idle_timeout, i32, 0 }
+    { pvp, bool, true }
+    { query_port, i32, 25565 }
+    { rcon_password, String, "".to_string() }
+    { rcon_port, i32, 25575 }
+    { resource_pack, String, "".to_string() }
+    { resource_pack_hash, String, "".to_string() }
+    { server_ip, String, "".to_string() }
+    { server_port, i32, 25565 }
+    { snooper_enabled, bool, true }
+    { spawn_animals, bool, true }
+    { spawn_monsters, bool, true }
+    { spawn_npcs, bool, true }
+    { spawn_protection, i32, 16 }
+    { use_native_transport, bool, true }
+    { view_distance, i32, 10 }
+    { white_list, bool, false }
 }
