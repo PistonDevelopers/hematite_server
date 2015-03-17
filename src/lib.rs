@@ -1,5 +1,4 @@
 #![feature(core)]
-#![feature(fs)]
 #![feature(io)]
 #![feature(net)]
 #![feature(std_misc)]
