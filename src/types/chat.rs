@@ -5,6 +5,8 @@ use std::io;
 use rustc_serialize::json;
 use rustc_serialize::json::{Json, ToJson};
 
+use types::consts::Color;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ChatJsonError {
     MalformedJson(json::ParserError),
@@ -52,7 +54,7 @@ impl ChatJson {
         }
     }
 
-    pub fn from_json(src: &mut io::Read) -> Result<ChatJson, ChatJsonError> {
+    pub fn from_reader(src: &mut io::Read) -> Result<ChatJson, ChatJsonError> {
         let json = try!(Json::from_reader(src));
         if let Json::Object(map) = json {
             let mut result = ChatJson::msg("".to_string());
@@ -260,71 +262,6 @@ impl ToJson for HoverEvent {
     }
 }
 
-#[derive(Copy, Debug, Clone, Eq, PartialEq)]
-pub enum Color {
-    Black       = 0x0,
-    DarkBlue    = 0x1,
-    DarkGreen   = 0x2,
-    DarkCyan    = 0x3,
-    DarkRed     = 0x4,
-    Purple      = 0x5,
-    Gold        = 0x6,
-    Gray        = 0x7,
-    DarkGray    = 0x8,
-    Blue        = 0x9,
-    BrightGreen = 0xa,
-    Cyan        = 0xb,
-    Red         = 0xc,
-    Pink        = 0xd,
-    Yellow      = 0xe,
-    White       = 0xf
-}
-
-impl Color {
-    pub fn to_string(&self) -> String {
-        match self {
-            &Color::Black => "black".to_string(),
-            &Color::DarkBlue => "dark_blue".to_string(),
-            &Color::DarkGreen => "dark_green".to_string(),
-            &Color::DarkCyan => "dark_aqua".to_string(),
-            &Color::DarkRed => "dark_red".to_string(),
-            &Color::Purple => "dark_purple".to_string(),
-            &Color::Gold => "gold".to_string(),
-            &Color::Gray => "gray".to_string(),
-            &Color::DarkGray => "dark_gray".to_string(),
-            &Color::Blue => "blue".to_string(),
-            &Color::BrightGreen => "green".to_string(),
-            &Color::Cyan => "aqua".to_string(),
-            &Color::Red => "red".to_string(),
-            &Color::Pink => "light_purple".to_string(),
-            &Color::Yellow => "yellow".to_string(),
-            &Color::White => "white".to_string()
-        }
-    }
-
-    pub fn from_string(string: &String) -> Option<Color> {
-        match string.as_slice() {
-            "black"        => Some(Color::Black),
-            "dark_blue"    => Some(Color::DarkBlue),
-            "dark_green"   => Some(Color::DarkGreen),
-            "dark_aqua"    => Some(Color::DarkCyan),
-            "dark_red"     => Some(Color::DarkRed),
-            "dark_purple"  => Some(Color::Purple),
-            "gold"         => Some(Color::Gold),
-            "gray"         => Some(Color::Gray),
-            "dark_gray"    => Some(Color::DarkGray),
-            "blue"         => Some(Color::Blue),
-            "green"        => Some(Color::BrightGreen),
-            "aqua"         => Some(Color::Cyan),
-            "red"          => Some(Color::Red),
-            "light_purple" => Some(Color::Pink),
-            "yellow"       => Some(Color::Yellow),
-            "white"        => Some(Color::White),
-            _              => None
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum Format {
     Bold, Underlined, Strikethrough, Italic, Obfuscated, Random, Reset
@@ -360,6 +297,7 @@ impl Format {
 #[cfg(test)]
 mod test {
     use super::*;
+    use types::consts::Color;
     use std::io;
     use rustc_serialize::json::{Builder, ToJson};
 
@@ -369,7 +307,7 @@ mod test {
         let blob = r#"{
             "text": "Hello, world!"
         }"#;
-        let parsed = ChatJson::from_json(&mut io::Cursor::new(blob.as_bytes())).unwrap();
+        let parsed = ChatJson::from_reader(&mut io::Cursor::new(blob.as_bytes())).unwrap();
         assert_eq!(&msg, &parsed);
     }
 
@@ -378,7 +316,7 @@ mod test {
         let blob = r#"{
             "text": true
         }"#;
-        let parsed = ChatJson::from_json(&mut io::Cursor::new(blob.as_bytes()));
+        let parsed = ChatJson::from_reader(&mut io::Cursor::new(blob.as_bytes()));
         assert_eq!(&parsed, &Err(ChatJsonError::InvalidFieldType));
     }
 
@@ -410,7 +348,7 @@ mod test {
 
         let blob_json = Builder::new(blob.chars()).build().unwrap();
         assert_eq!(&blob_json, &msg.to_json());
-        let parsed = ChatJson::from_json(&mut io::Cursor::new(blob.as_bytes())).unwrap();
+        let parsed = ChatJson::from_reader(&mut io::Cursor::new(blob.as_bytes())).unwrap();
         assert_eq!(&msg, &parsed);
     }
 
@@ -439,7 +377,7 @@ mod test {
             "insertion": "Hello world"
         }"#;
 
-        let parsed = ChatJson::from_json(&mut io::Cursor::new(blob.as_bytes()));
+        let parsed = ChatJson::from_reader(&mut io::Cursor::new(blob.as_bytes()));
         println!("{:?}", parsed);
     }
 }
