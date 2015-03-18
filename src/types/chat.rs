@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::error::{Error, FromError};
 use std::io;
 
+use rustc_serialize::{Encodable, Encoder};
 use rustc_serialize::json;
 use rustc_serialize::json::{Json, ToJson};
 
@@ -56,6 +57,10 @@ impl ChatJson {
 
     pub fn from_reader(src: &mut io::Read) -> Result<ChatJson, ChatJsonError> {
         let json = try!(Json::from_reader(src));
+        ChatJson::from_json(json)
+    }
+
+    pub fn from_json(json: Json) -> Result<ChatJson, ChatJsonError> {
         if let Json::Object(map) = json {
             let mut result = ChatJson::msg("".to_string());
             for (key, value) in map {
@@ -188,6 +193,12 @@ impl ToJson for ChatJson {
         }
         
         Json::Object(d)
+    }
+}
+
+impl Encodable for ChatJson {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        self.to_json().encode(s)
     }
 }
 
