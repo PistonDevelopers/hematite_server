@@ -157,7 +157,7 @@ mod tests {
     #[test]
     fn varint_read() {
         let tests = varint_tests();
-        for test in tests.iter() {
+        for test in &tests {
             let mut r = io::Cursor::new(test.bytes.clone());
             let value = <Var<i32> as Protocol>::proto_decode(&mut r).unwrap();
             assert_eq!(test.value, value);
@@ -167,7 +167,7 @@ mod tests {
     #[test]
     fn varint_write() {
         let tests = varint_tests();
-        for test in tests.iter() {
+        for test in &tests {
             let mut w = Vec::new();
             <Var<i32> as Protocol>::proto_encode(&test.value, &mut w).unwrap();
             assert_eq!(&w, &test.bytes);
@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn varlong_read() {
         let tests = varlong_tests();
-        for test in tests.iter() {
+        for test in &tests {
             let mut r = io::Cursor::new(test.bytes.clone());
             let value = <Var<i64> as Protocol>::proto_decode(&mut r).unwrap();
             assert_eq!(test.value, value);
@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn varlong_write() {
         let tests = varlong_tests();
-        for test in tests.iter() {
+        for test in &tests {
             let mut w = Vec::new();
             <Var<i64> as Protocol>::proto_encode(&test.value, &mut w).unwrap();
             assert_eq!(&w, &test.bytes);

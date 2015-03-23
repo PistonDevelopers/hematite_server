@@ -374,10 +374,10 @@ pub mod play {
                     try!(<bool as Protocol>::proto_encode(&this.sky_light_sent, dst));
                     let columns = this.chunk_meta.len() as i32;
                     try!(<Var<i32> as Protocol>::proto_encode(&columns, dst));
-                    for cm in this.chunk_meta.iter() {
+                    for cm in &this.chunk_meta {
                         try!(<ChunkMeta as Protocol>::proto_encode(cm, dst));
                     }
-                    for cd in this.chunk_data.iter() {
+                    for cd in &this.chunk_data {
                         let chunk_column = try!(cd.encode());
                         try!(dst.write_all(&chunk_column));
                     }
@@ -387,7 +387,7 @@ pub mod play {
                     let sky_light_sent = try!(<bool as Protocol>::proto_decode(src));
                     let columns = try!(<Var<i32> as Protocol>::proto_decode(src));
                     let mut chunk_meta = Vec::with_capacity(columns as usize);
-                    for cm in chunk_meta.iter_mut() {
+                    for cm in &mut chunk_meta {
                         *cm = try!(<ChunkMeta as Protocol>::proto_decode(src));
                     }
                     // Read all encoded ChunkColumns, buffer size starts at 4KB, probably will get bigger

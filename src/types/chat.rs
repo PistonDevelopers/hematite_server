@@ -172,7 +172,7 @@ impl ToJson for ChatJson {
             _ => unimplemented!()
         };
 
-        for format in self.formats.iter() {
+        for format in &self.formats {
             d.insert(format.to_string(), Json::Boolean(true));
         }
 
