@@ -2,6 +2,7 @@
 #![feature(io)]
 #![feature(net)]
 #![feature(std_misc)]
+#![feature(step_by)]
 #![feature(test)]
 
 extern crate byteorder;
