@@ -30,7 +30,7 @@ impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
 
     fn proto_decode(src: &mut Read) -> io::Result<Vec<T::Clean>> {
         let len = try!(try!(<L as Protocol>::proto_decode(src)).to_usize().ok_or(io::Error::new(io::ErrorKind::InvalidInput, "could not read length of vector from Array length type", None)));
-        <io::Result<Vec<T::Clean>> as FromIterator<_>>::from_iter((0..len).map(|_| <T as Protocol>::proto_decode(src)))
+        io::Result::from_iter((0..len).map(|_| <T as Protocol>::proto_decode(src)))
     }
 }
 
