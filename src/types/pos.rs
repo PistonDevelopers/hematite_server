@@ -52,7 +52,7 @@ impl<T: Protocol> Protocol for [T; 3] {
     }
 
     fn proto_encode(value: &[T::Clean; 3], dst: &mut Write) -> io::Result<()> {
-        for coord in value.iter() {
+        for coord in value {
             try!(<T as Protocol>::proto_encode(coord, dst));
         }
         Ok(())

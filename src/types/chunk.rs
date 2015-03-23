@@ -28,15 +28,15 @@ impl ChunkColumn {
         use byteorder::{LittleEndian, WriteBytesExt};
 
         let mut dst: Cursor<Vec<u8>> = Cursor::new(Vec::new());
-        for chunk in self.chunks.iter() {
+        for chunk in &self.chunks {
             for x in chunk.blocks.iter() {
                 try!(dst.write_u16::<LittleEndian>(*x));
             }
         }
-        for chunk in self.chunks.iter() {
+        for chunk in &self.chunks {
             try!(dst.write_all(&chunk.block_light));
         }
-        for chunk in self.chunks.iter() {
+        for chunk in &self.chunks {
             match chunk.sky_light {
                 Some(xs) => try!(dst.write_all(&xs)),
                 None => {}
@@ -62,18 +62,18 @@ impl ChunkColumn {
             chunks: chunks,
             biomes: None
         };
-        for chunk in column.chunks.iter_mut() {
+        for chunk in &mut column.chunks {
             for x in chunk.blocks.iter_mut() {
                 *x = try!(<u16 as Protocol>::proto_decode(src));
             }
         }
-        for chunk in column.chunks.iter_mut() {
+        for chunk in &mut column.chunks {
             // We use this instead of read_exact because it's an array, Vec is useless here.
             for x in chunk.block_light.iter_mut() {
                 *x = try!(<u8 as Protocol>::proto_decode(src));
             }
         }
-        for chunk in column.chunks.iter_mut() {
+        for chunk in &mut column.chunks {
             // sky_light value varies by packet
             // - 0x21 ChunkData uses `sky_light = dimension == Dimension::Overworld`
             // - 0x26 ChunkDataBulk uses `sky_light = true`

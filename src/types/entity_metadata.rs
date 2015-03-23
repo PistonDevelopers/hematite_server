@@ -63,7 +63,7 @@ impl Protocol for EntityMetadata {
         fn key(k: u8, idx: u8) -> u8 {
             (k << 5 | idx & 0x1f) & 0xff
         }
-        for (idx, value) in value.dict.iter() {
+        for (idx, value) in &value.dict {
             match value {
                 &Entry::Byte(ref b) => {
                     try!(<u8 as Protocol>::proto_encode(&key(0, *idx), dst));
