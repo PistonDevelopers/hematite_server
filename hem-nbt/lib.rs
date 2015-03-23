@@ -261,7 +261,7 @@ impl NbtValue {
             0x07 => { // ByteArray
                 let len = try!(src.read_i32::<BigEndian>()) as usize;
                 let mut buf = Vec::with_capacity(len);
-                for _ in range(0, len) {
+                for _ in 0..len {
                     buf.push(try!(src.read_i8()));
                 }
                 Ok(NbtValue::ByteArray(buf))
@@ -274,7 +274,7 @@ impl NbtValue {
                 let id = try!(src.read_u8());
                 let len = try!(src.read_i32::<BigEndian>()) as usize;
                 let mut buf = Vec::with_capacity(len);
-                for _ in range(0, len) {
+                for _ in 0..len {
                     buf.push(try!(NbtValue::from_reader(id, src)));
                 }
                 Ok(NbtValue::List(buf))
@@ -292,7 +292,7 @@ impl NbtValue {
             0x0b => { // IntArray
                 let len = try!(src.read_i32::<BigEndian>()) as usize;
                 let mut buf = Vec::with_capacity(len);
-                for _ in range(0, len) {
+                for _ in 0..len {
                     buf.push(try!(src.read_i32::<BigEndian>()));
                 }
                 Ok(NbtValue::IntArray(buf))

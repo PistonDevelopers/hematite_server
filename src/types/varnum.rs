@@ -4,7 +4,6 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 
 use std::io;
 use std::io::prelude::*;
-use std::iter::range_step;
 use std::marker::PhantomData;
 
 use packet::Protocol;
@@ -45,7 +44,7 @@ impl Protocol for Var<i32> {
     fn proto_decode(mut src: &mut Read) -> io::Result<i32> {
         let mut x = 0i32;
 
-        for shift in range_step(0, 32, 7) {
+        for shift in (0..32).step_by(7) {
             let b = try!(src.read_u8()) as i32;
             x |= (b & 0x7F) << shift;
             if (b & 0x80) == 0 {
@@ -91,7 +90,7 @@ impl Protocol for Var<i64> {
     fn proto_decode(mut dst: &mut Read) -> io::Result<i64> {
         let mut x = 0i64;
 
-        for shift in range_step(0, 64, 7) {
+        for shift in (0..64).step_by(7) {
             let b = try!(dst.read_u8()) as i64;
             x |= (b & 0x7F) << shift;
             if (b & 0x80) == 0 {
