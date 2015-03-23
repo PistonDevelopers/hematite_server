@@ -305,33 +305,35 @@ impl NbtValue {
 impl fmt::Display for NbtValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            NbtValue::Byte(v)      => write!(f, "{}", v),
-            NbtValue::Short(v)     => write!(f, "{}", v),
-            NbtValue::Int(v)       => write!(f, "{}", v),
-            NbtValue::Long(v)      => write!(f, "{}", v),
-            NbtValue::Float(v)     => write!(f, "{}", v),
-            NbtValue::Double(v)    => write!(f, "{}", v),
+            NbtValue::Byte(v)   => write!(f, "{}", v),
+            NbtValue::Short(v)  => write!(f, "{}", v),
+            NbtValue::Int(v)    => write!(f, "{}", v),
+            NbtValue::Long(v)   => write!(f, "{}", v),
+            NbtValue::Float(v)  => write!(f, "{}", v),
+            NbtValue::Double(v) => write!(f, "{}", v),
             NbtValue::ByteArray(ref v) => write!(f, "{:?}", v),
-            NbtValue::String(ref v)    => write!(f, "{}", v),
-            NbtValue::List(ref v)      => {
+            NbtValue::String(ref v) => write!(f, "{}", v),
+            NbtValue::List(ref v) => {
                 if v.len() == 0 {
                     write!(f, "zero entries")
                 } else {
-                    write!(f, "{} entries of type {}\n{{\n", v.len(), v[0].to_string());
+                    try!(write!(f, "{} entries of type {}\n{{\n", v.len(), v[0].to_string()));
                     for tag in v {
-                        write!(f, "{}(None): {}\n", tag.to_string(), tag);
+                        try!(write!(f, "{}(None): {}\n", tag.to_string(), tag));
                     }
-                    write!(f, "}}")
+                    try!(write!(f, "}}"));
+                    Ok(())
                 }
-            },
-            NbtValue::Compound(ref v)  => {
-                write!(f, "{} entry(ies)\n{{\n", v.len());
+            }
+            NbtValue::Compound(ref v) => {
+                try!(write!(f, "{} entry(ies)\n{{\n", v.len()));
                 for (name, tag) in v {
-                    write!(f, "{}(\"{}\"): {}\n", tag.to_string(), name, tag);
+                    try!(write!(f, "{}(\"{}\"): {}\n", tag.to_string(), name, tag));
                 }
-                write!(f, "}}")
-            },
-            NbtValue::IntArray(ref v)  => write!(f, "{:?}", v)
+                try!(write!(f, "}}"));
+                Ok(())
+            }
+            NbtValue::IntArray(ref v) => write!(f, "{:?}", v)
         }
     }
 }
