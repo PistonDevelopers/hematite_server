@@ -3,6 +3,7 @@
 use std::io;
 use std::io::prelude::*;
 use std::iter::AdditiveIterator;
+use std::num::Int;
 
 use packet::Protocol;
 
@@ -31,16 +32,20 @@ impl Protocol for BlockPos {
         bounds_check!("x", x, 25);
         bounds_check!("y", y, 11);
         bounds_check!("z", z, 25);
-        try!(dst.write_u64::<BigEndian>(((x as u64 & 0x3ffffff) << 38) | ((y as u64 & 0xfff) << 26) | (z as u64 & 0x3ffffff)));
+        try!(dst.write_u64::<BigEndian>((x as u64 & 0x3ffffff) << 38 | (y as u64 & 0xfff) << 26 | z as u64 & 0x3ffffff));
         Ok(())
     }
 
     fn proto_decode(mut src: &mut Read) -> io::Result<[i32; 3]> {
         let block_pos = try!(src.read_u64::<BigEndian>());
         let x = (block_pos >> 38) as i32;
-        let y = ((block_pos >> 26) & 0xfff) as i32;
+        let y = (block_pos >> 26 & 0xfff) as i32;
         let z = (block_pos & 0x3ffffff) as i32;
-        Ok([x, y, z])
+        Ok([
+            if x >= 2.pow(25) { x - 2.pow(26) } else { x },
+            if y >= 2.pow(11) { y - 2.pow(12) } else { y },
+            if z >= 2.pow(25) { z - 2.pow(26) } else { z }
+        ])
     }
 }
 
