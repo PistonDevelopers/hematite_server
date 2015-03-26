@@ -7,7 +7,7 @@
 extern crate byteorder;
 extern crate flate2;
 extern crate nbt;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate test;
 extern crate time;
 extern crate uuid;
