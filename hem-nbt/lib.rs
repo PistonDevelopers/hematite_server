@@ -459,9 +459,9 @@ impl NbtBlob {
 impl<'a> Index<&'a str> for NbtBlob {
     type Output = NbtValue;
 
-    fn index<'b>(&'b self, s: &&'a str) -> &'b NbtValue {
+    fn index<'b>(&'b self, s: &'a str) -> &'b NbtValue {
         match self.content {
-            NbtValue::Compound(ref v) => v.get(*s).unwrap(),
+            NbtValue::Compound(ref v) => v.get(s).unwrap(),
             _ => unreachable!()
         }
     }
