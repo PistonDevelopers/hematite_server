@@ -42,9 +42,9 @@ impl Protocol for BlockPos {
         let y = (block_pos >> 26 & 0xfff) as i32;
         let z = (block_pos & 0x3ffffff) as i32;
         Ok([
-            if x >= 1 << 25 { x - 1 << 26 } else { x },
-            if y >= 1 << 11 { y - 1 << 12 } else { y },
-            if z >= 1 << 25 { z - 1 << 26 } else { z }
+            if x >= 1 << 25 { x - (1 << 26) } else { x },
+            if y >= 1 << 11 { y - (1 << 12) } else { y },
+            if z >= 1 << 25 { z - (1 << 26) } else { z }
         ])
     }
 }
