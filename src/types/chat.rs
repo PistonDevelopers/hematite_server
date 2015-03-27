@@ -323,7 +323,7 @@ mod test {
 
     #[test]
     fn chat_plain() {
-        let msg = ChatJson::msg("Hello, world!".to_string());
+        let msg = ChatJson::from("Hello, world!");
         let blob = r#"{
             "text": "Hello, world!"
         }"#;
@@ -342,7 +342,7 @@ mod test {
 
     #[test]
     fn chat_with_events() {
-        let mut msg = ChatJson::msg("Hello, world!".to_string());
+        let mut msg = ChatJson::from("Hello, world!");
         msg.formats.insert(Format::Bold);
         msg.formats.insert(Format::Strikethrough);
         msg.color = Some(Color::Red);
