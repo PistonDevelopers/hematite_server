@@ -125,7 +125,7 @@ impl NbtValue {
     }
 
     /// A string representation of this tag.
-    fn to_string(&self) -> &str {
+    fn tag_name(&self) -> &str {
         match *self {
             NbtValue::Byte(_)      => "TAG_Byte",
             NbtValue::Short(_)     => "TAG_Short",
@@ -168,10 +168,10 @@ impl NbtValue {
 
     /// Writes the header (that is, the value's type ID and optionally a title)
     /// of this `NbtValue` to an `io::Write` destination.
-    pub fn write_header(&self, mut dst: &mut io::Write, title: &String) -> Result<(), NbtError> {
+    pub fn write_header(&self, mut dst: &mut io::Write, title: &str) -> Result<(), NbtError> {
         try!(dst.write_u8(self.id()));
         try!(dst.write_u16::<BigEndian>(title.len() as u16));
-        try!(dst.write_all(title.as_slice().as_bytes()));
+        try!(dst.write_all(title.as_bytes()));
         Ok(())
     }
 
@@ -192,7 +192,7 @@ impl NbtValue {
             },
             NbtValue::String(ref val) => {
                 try!(dst.write_u16::<BigEndian>(val.len() as u16));
-                try!(dst.write_all(val.as_slice().as_bytes()));
+                try!(dst.write_all(val.as_bytes()));
             },
             NbtValue::List(ref vals) => {
                 // This is a bit of a trick: if the list is empty, don't bother
@@ -268,7 +268,7 @@ impl NbtValue {
             },
             0x08 => { // String
                 let len = try!(src.read_u16::<BigEndian>()) as usize;
-                Ok(NbtValue::String(try!(read_utf8(src, len as usize))))
+                Ok(NbtValue::String(try!(read_utf8(src, len))))
             },
             0x09 => { // List
                 let id = try!(src.read_u8());
@@ -317,9 +317,9 @@ impl fmt::Display for NbtValue {
                 if v.len() == 0 {
                     write!(f, "zero entries")
                 } else {
-                    try!(write!(f, "{} entries of type {}\n{{\n", v.len(), v[0].to_string()));
+                    try!(write!(f, "{} entries of type {}\n{{\n", v.len(), v[0].tag_name()));
                     for tag in v {
-                        try!(write!(f, "{}(None): {}\n", tag.to_string(), tag));
+                        try!(write!(f, "{}(None): {}\n", tag.tag_name(), tag));
                     }
                     try!(write!(f, "}}"));
                     Ok(())
@@ -328,7 +328,7 @@ impl fmt::Display for NbtValue {
             NbtValue::Compound(ref v) => {
                 try!(write!(f, "{} entry(ies)\n{{\n", v.len()));
                 for (name, tag) in v {
-                    try!(write!(f, "{}(\"{}\"): {}\n", tag.to_string(), name, tag));
+                    try!(write!(f, "{}(\"{}\"): {}\n", tag.tag_name(), name, tag));
                 }
                 try!(write!(f, "}}"));
                 Ok(())
@@ -452,7 +452,7 @@ impl NbtBlob {
     /// The uncompressed length of this `NbtBlob`, in bytes.
     pub fn len(&self) -> usize {
         // tag + name + content
-        1 + 2 + self.title.as_slice().len() + self.content.len()
+        1 + 2 + self.title.len() + self.content.len()
     }
 }
 

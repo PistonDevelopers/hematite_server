@@ -3,8 +3,7 @@ use std::error::{Error, FromError};
 use std::io;
 
 use rustc_serialize::{Encodable, Encoder};
-use rustc_serialize::json;
-use rustc_serialize::json::{Json, ToJson};
+use rustc_serialize::json::{self, Json, ToJson};
 
 use types::consts::Color;
 
@@ -48,24 +47,34 @@ pub struct ChatJson {
 }
 
 impl ChatJson {
-    pub fn msg(msg: String) -> ChatJson {
+    pub fn from_reader(src: &mut io::Read) -> Result<ChatJson, ChatJsonError> {
+        let json = try!(Json::from_reader(src));
+        Result::from(json)
+    }
+}
+
+impl From<String> for ChatJson {
+    fn from(msg: String) -> ChatJson {
         ChatJson {
             msg: Message::PlainText(msg), extra: None, color: None, formats: BTreeSet::new(),
             click_event: None, hover_event: None, insertion: None
         }
     }
+}
 
-    pub fn from_reader(src: &mut io::Read) -> Result<ChatJson, ChatJsonError> {
-        let json = try!(Json::from_reader(src));
-        ChatJson::from_json(json)
+impl<'a> From<&'a str> for ChatJson {
+    fn from(msg: &str) -> ChatJson {
+        ChatJson::from(msg.to_string())
     }
+}
 
-    pub fn from_json(json: Json) -> Result<ChatJson, ChatJsonError> {
+impl From<Json> for Result<ChatJson, ChatJsonError> {
+    fn from(json: Json) -> Result<ChatJson, ChatJsonError> {
         if let Json::Object(map) = json {
-            let mut result = ChatJson::msg("".to_string());
+            let mut result = ChatJson::from("");
             for (key, value) in map {
                 println!("{:?}: {:?}", key, value);
-                match key.as_slice() {
+                match &key[..] {
                     "text" => {
                         if let Json::String(string) = value {
                             result.msg = Message::PlainText(string);
@@ -82,7 +91,7 @@ impl ChatJson {
                     },
                     "color" => {
                         if let Json::String(string) = value {
-                            result.color = match Color::from_string(&string) {
+                            result.color = match Option::from(&string) {
                                 None => return Err(ChatJsonError::InvalidColor(string)),
                                 c => c
                             };
@@ -110,7 +119,7 @@ impl ChatJson {
                             };
                             // Handle the different click events.
                             if let Some(&Json::String(ref string)) = event.get("action") {
-                                result.click_event = match string.as_slice() {
+                                result.click_event = match &string[..] {
                                     "open_url" => Some(ClickEvent::OpenUrl(val)),
                                     "open_file" => Some(ClickEvent::OpenFile(val)),
                                     "run_command" => Some(ClickEvent::RunCommand(val)),
@@ -132,7 +141,7 @@ impl ChatJson {
                             };
                             // Handle the different click events.
                             if let Some(&Json::String(ref string)) = event.get("action") {
-                                result.hover_event = match string.as_slice() {
+                                result.hover_event = match &string[..] {
                                     "show_text" => Some(HoverEvent::Text(val)),
                                     "show_achievement" => Some(HoverEvent::Achievement(val)),
                                     "show_item" => Some(HoverEvent::Item(val)),
@@ -180,7 +189,7 @@ impl ToJson for ChatJson {
             d.insert("extra".to_string(), extra.to_json());
         }
         if let Some(ref color) = self.color {
-            d.insert("color".to_string(), color.to_string().to_json());
+            d.insert("color".to_string(), color.to_json());
         }
         if let Some(ref event) = self.click_event {
             d.insert("clickEvent".to_string(), event.to_json());
@@ -291,8 +300,8 @@ impl Format {
         }
     }
 
-    pub fn from_string(string: &String) -> Option<Format> {
-        match string.as_slice() {
+    pub fn from_string(string: &str) -> Option<Format> {
+        match string {
             "bold"          => Some(Format::Bold),
             "italic"        => Some(Format::Italic),
             "underlined"    => Some(Format::Underlined),

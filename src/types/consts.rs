@@ -6,6 +6,8 @@ use std::num::FromPrimitive;
 
 use packet::Protocol;
 
+use rustc_serialize::json::{Json, ToJson};
+
 macro_rules! enum_protocol_impl {
     ($name:ty, $repr:ty, $dec_repr:ident) => {
         impl Protocol for $name {
@@ -61,30 +63,32 @@ pub enum Color {
     White       = 0xf
 }
 
-impl Color {
-    pub fn to_string(&self) -> String {
-        match self {
-            &Color::Black => "black".to_string(),
-            &Color::DarkBlue => "dark_blue".to_string(),
-            &Color::DarkGreen => "dark_green".to_string(),
-            &Color::DarkCyan => "dark_aqua".to_string(),
-            &Color::DarkRed => "dark_red".to_string(),
-            &Color::Purple => "dark_purple".to_string(),
-            &Color::Gold => "gold".to_string(),
-            &Color::Gray => "gray".to_string(),
-            &Color::DarkGray => "dark_gray".to_string(),
-            &Color::Blue => "blue".to_string(),
-            &Color::BrightGreen => "green".to_string(),
-            &Color::Cyan => "aqua".to_string(),
-            &Color::Red => "red".to_string(),
-            &Color::Pink => "light_purple".to_string(),
-            &Color::Yellow => "yellow".to_string(),
-            &Color::White => "white".to_string()
+impl AsRef<str> for Color {
+    fn as_ref(&self) -> &str {
+        match *self {
+            Color::Black => "black",
+            Color::DarkBlue => "dark_blue",
+            Color::DarkGreen => "dark_green",
+            Color::DarkCyan => "dark_aqua",
+            Color::DarkRed => "dark_red",
+            Color::Purple => "dark_purple",
+            Color::Gold => "gold",
+            Color::Gray => "gray",
+            Color::DarkGray => "dark_gray",
+            Color::Blue => "blue",
+            Color::BrightGreen => "green",
+            Color::Cyan => "aqua",
+            Color::Red => "red",
+            Color::Pink => "light_purple",
+            Color::Yellow => "yellow",
+            Color::White => "white"
         }
     }
+}
 
-    pub fn from_string(string: &String) -> Option<Color> {
-        match string.as_slice() {
+impl<'a> From<&'a str> for Option<Color> {
+    fn from(string: &str) -> Option<Color> {
+        match string {
             "black"        => Some(Color::Black),
             "dark_blue"    => Some(Color::DarkBlue),
             "dark_green"   => Some(Color::DarkGreen),
@@ -103,5 +107,11 @@ impl Color {
             "white"        => Some(Color::White),
             _              => None
         }
+    }
+}
+
+impl ToJson for Color {
+    fn to_json(&self) -> Json {
+        self.as_ref().to_json()
     }
 }

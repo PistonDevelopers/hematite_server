@@ -1,6 +1,7 @@
 //! MC Protocol Chunk data types.
 
 use std::fmt;
+use std::default::Default;
 use std::io::prelude::*;
 use std::io::{self, Cursor};
 
@@ -56,7 +57,7 @@ impl ChunkColumn {
         let mut chunks = Vec::new();
         // NOTE: vec![Chunk::empty(); num_chunks as usize] won't work
         for _ in 0..num_chunks {
-            chunks.push(Chunk::empty());
+            chunks.push(Chunk::default());
         }
         let mut column = ChunkColumn{
             chunks: chunks,
@@ -123,18 +124,21 @@ impl Chunk {
         };
         8192 + 2048 + sky
     }
-    pub fn empty() -> Chunk {
-        Chunk {
-            blocks: [0u16; 4096],
-            block_light: [0u8; 2048],
-            sky_light: None
-        }
-    }
     pub fn new(block: u16, light: u8) -> Chunk {
         Chunk {
             blocks: [block; 4096],
             block_light: [light; 2048],
             sky_light: Some([light; 2048])
+        }
+    }
+}
+
+impl Default for Chunk {
+    fn default() -> Chunk {
+        Chunk {
+            blocks: [0u16; 4096],
+            block_light: [0u8; 2048],
+            sky_light: None
         }
     }
 }

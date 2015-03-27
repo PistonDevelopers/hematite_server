@@ -1,4 +1,4 @@
-extern crate "hematite_server" as hem;
+extern crate hematite_server as hem;
 
 use std::io;
 

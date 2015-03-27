@@ -3,7 +3,6 @@
 use std::io;
 use std::io::prelude::*;
 use std::iter::AdditiveIterator;
-use std::num::Int;
 
 use packet::Protocol;
 
