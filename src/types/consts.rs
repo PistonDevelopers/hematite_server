@@ -84,7 +84,7 @@ impl Color {
     }
 
     pub fn from_string(string: &String) -> Option<Color> {
-        match string.as_slice() {
+        match string.as_ref() {
             "black"        => Some(Color::Black),
             "dark_blue"    => Some(Color::DarkBlue),
             "dark_green"   => Some(Color::DarkGreen),
