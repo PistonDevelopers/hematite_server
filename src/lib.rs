@@ -1,3 +1,4 @@
+#![feature(convert)]
 #![feature(core)]
 #![feature(io)]
 #![feature(std_misc)]

@@ -65,7 +65,7 @@ impl ChatJson {
             let mut result = ChatJson::msg("".to_string());
             for (key, value) in map {
                 println!("{:?}: {:?}", key, value);
-                match key.as_slice() {
+                match key.as_ref() {
                     "text" => {
                         if let Json::String(string) = value {
                             result.msg = Message::PlainText(string);
@@ -110,7 +110,7 @@ impl ChatJson {
                             };
                             // Handle the different click events.
                             if let Some(&Json::String(ref string)) = event.get("action") {
-                                result.click_event = match string.as_slice() {
+                                result.click_event = match string.as_ref() {
                                     "open_url" => Some(ClickEvent::OpenUrl(val)),
                                     "open_file" => Some(ClickEvent::OpenFile(val)),
                                     "run_command" => Some(ClickEvent::RunCommand(val)),
@@ -132,7 +132,7 @@ impl ChatJson {
                             };
                             // Handle the different click events.
                             if let Some(&Json::String(ref string)) = event.get("action") {
-                                result.hover_event = match string.as_slice() {
+                                result.hover_event = match string.as_ref() {
                                     "show_text" => Some(HoverEvent::Text(val)),
                                     "show_achievement" => Some(HoverEvent::Achievement(val)),
                                     "show_item" => Some(HoverEvent::Item(val)),
@@ -191,7 +191,7 @@ impl ToJson for ChatJson {
         if let Some(ref ins) = self.insertion {
             d.insert("insertion".to_string(), ins.to_json());
         }
-        
+
         Json::Object(d)
     }
 }
@@ -292,7 +292,7 @@ impl Format {
     }
 
     pub fn from_string(string: &String) -> Option<Format> {
-        match string.as_slice() {
+        match string.as_ref() {
             "bold"          => Some(Format::Bold),
             "italic"        => Some(Format::Italic),
             "underlined"    => Some(Format::Underlined),
