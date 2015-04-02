@@ -2,7 +2,6 @@
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use std::error::FromError;
 use std::io;
 use std::io::prelude::*;
 
@@ -84,8 +83,7 @@ macro_rules! packets {
             fn inner_decode(src: &mut Read) -> io::Result<Self> {
                 match try!(<Var<i32> as Protocol>::proto_decode(src)) {
                     $($id => <$name as Protocol>::proto_decode(src).map(Packet::$name),)*
-                    _ => Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                             "unknown packet id", None))
+                    _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "unknown packet id"))
                 }
             }
         }
@@ -118,7 +116,7 @@ macro_rules! impl_protocol {
             }
 
             fn proto_decode(mut src: &mut Read) -> io::Result<$name> {
-                src.$dec_name().map_err(|err| FromError::from_error(err))
+                src.$dec_name().map_err(|err| io::Error::from(err))
             }
         }
     };
@@ -135,7 +133,7 @@ macro_rules! impl_protocol {
             }
 
             fn proto_decode(mut src: &mut Read) -> io::Result<$name> {
-                src.$dec_name::<BigEndian>().map_err(|err| FromError::from_error(err))
+                src.$dec_name::<BigEndian>().map_err(|err| io::Error::from(err))
             }
         }
     }
@@ -229,7 +227,7 @@ impl Protocol for bool {
     fn proto_decode(mut src: &mut Read) -> io::Result<bool> {
         let value = try!(src.read_u8());
         if value > 1 {
-            Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid bool value", Some(format!("Invalid bool value, expecting 0 or 1, got {}", value))))
+            Err(io::Error::new(io::ErrorKind::InvalidInput, &format!("Invalid bool value, expecting 0 or 1, got {}", value)[..]))
         } else {
             Ok(value == 1)
         }
@@ -289,7 +287,7 @@ impl Protocol for NextState {
         match try!(<Var<i32> as Protocol>::proto_decode(src)) {
             1 => Ok(NextState::Status),
             2 => Ok(NextState::Login),
-            _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid state", None))
+            _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid state"))
         }
     }
 }

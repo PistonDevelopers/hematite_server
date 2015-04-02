@@ -121,7 +121,7 @@ impl Protocol for EntityMetadata {
                 6 => Entry::Int3(try!(<[i32; 3] as Protocol>::proto_decode(src))),
                 7 => Entry::Float3(try!(<[f32; 3] as Protocol>::proto_decode(src))),
                 ty => {
-                    return Err(io::Error::new(io::ErrorKind::InvalidInput, "unknown type", Some(format!("unknown type {:x}", ty))));
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput, &format!("Unknown type {:x}", ty)[..]));
                 }
             };
             dict.insert(idx, value);

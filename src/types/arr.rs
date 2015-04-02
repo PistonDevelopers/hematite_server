@@ -20,7 +20,7 @@ impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
     }
 
     fn proto_encode(value: &Vec<T::Clean>, dst: &mut Write) -> io::Result<()> {
-        let len = try!(<L::Clean as NumCast>::from(value.len()).ok_or(io::Error::new(io::ErrorKind::InvalidInput, "could not convert length of vector to Array length type", None)));
+        let len = try!(<L::Clean as NumCast>::from(value.len()).ok_or(io::Error::new(io::ErrorKind::InvalidInput, "could not convert length of vector to Array length type")));
         try!(<L as Protocol>::proto_encode(&len, dst));
         for elt in value {
             try!(<T as Protocol>::proto_encode(elt, dst));
@@ -29,7 +29,7 @@ impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
     }
 
     fn proto_decode(src: &mut Read) -> io::Result<Vec<T::Clean>> {
-        let len = try!(try!(<L as Protocol>::proto_decode(src)).to_usize().ok_or(io::Error::new(io::ErrorKind::InvalidInput, "could not read length of vector from Array length type", None)));
+        let len = try!(try!(<L as Protocol>::proto_decode(src)).to_usize().ok_or(io::Error::new(io::ErrorKind::InvalidInput, "could not read length of vector from Array length type")));
         io::Result::from_iter((0..len).map(|_| <T as Protocol>::proto_decode(src)))
     }
 }
