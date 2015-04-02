@@ -1,8 +1,4 @@
-#![feature(core)]
-#![feature(io)]
-#![feature(std_misc)]
-#![feature(step_by)]
-#![feature(test)]
+#![feature(convert, core, io, std_misc, step_by, test)]
 
 extern crate byteorder;
 extern crate flate2;

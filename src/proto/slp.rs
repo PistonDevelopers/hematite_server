@@ -82,7 +82,7 @@ pub fn response(mut stream: &mut TcpStream) -> io::Result<()> {
             let mut file = try!(File::open(&Path::new("assets/favicon.png")));
             let mut contents = Vec::new();
             try!(file.read_to_end(&mut contents));
-            let favicon = contents.as_slice().to_base64(STANDARD);
+            let favicon = contents.to_base64(STANDARD);
             // FIXME(toqueteos): Micro-optimization? We could totally drop JSON
             // encoding and just replace player values (online & max) with format! all
             // other values are static.
