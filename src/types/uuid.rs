@@ -21,7 +21,7 @@ impl Protocol for Uuid {
     /// Reads 16 bytes from `src` and returns a `Uuid`
     fn proto_decode(mut src: &mut Read) -> io::Result<Uuid> {
         let v = try!(src.read_exact(16));
-        Uuid::from_bytes(&v).ok_or(io::Error::new(io::ErrorKind::InvalidInput, "invalid UUID value", Some(format!("value {:?} can't be used to create UUID", v))))
+        Uuid::from_bytes(&v).ok_or(io::Error::new(io::ErrorKind::InvalidInput, &format!("Invalid UUID value: {:?} can't be used to create UUID", v)[..]))
     }
 }
 
@@ -42,10 +42,10 @@ impl Protocol for UuidString {
         // Unfortunately we can't implement `impl FromError<ParseError> for io::Error`
         let s = try!(<String as Protocol>::proto_decode(src));
         Uuid::from_str(&s).map_err(|err| match err {
-            ParseError::InvalidLength(length) => io::Error::new(InvalidInput, "invalid length", Some(format!("length = {}", length))),
-            ParseError::InvalidCharacter(_, _) => io::Error::new(InvalidInput, "invalid character", None),
-            ParseError::InvalidGroups(_) => io::Error::new(InvalidInput, "invalid groups", None),
-            ParseError::InvalidGroupLength(_, _, _) => io::Error::new(InvalidInput, "invalid group length", None),
+            ParseError::InvalidLength(length) => io::Error::new(InvalidInput, &format!("Invalid length: {}", length)[..]),
+            ParseError::InvalidCharacter(_, _) => io::Error::new(InvalidInput, "invalid character"),
+            ParseError::InvalidGroups(_) => io::Error::new(InvalidInput, "invalid groups"),
+            ParseError::InvalidGroupLength(_, _, _) => io::Error::new(InvalidInput, "invalid group length"),
         })
     }
 }

@@ -1,13 +1,14 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::error::{Error, FromError};
+use std::error::Error;
 use std::io;
+use std::str::FromStr;
 
 use rustc_serialize::{Encodable, Encoder};
 use rustc_serialize::json::{self, Json, ToJson};
 
 use types::consts::Color;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ChatJsonError {
     MalformedJson(json::ParserError),
     IoError(io::Error),
@@ -19,14 +20,14 @@ pub enum ChatJsonError {
     InvalidHoverEvent
 }
 
-impl FromError<io::Error> for ChatJsonError {
-    fn from_error(err: io::Error) -> ChatJsonError {
+impl From<io::Error> for ChatJsonError {
+    fn from(err: io::Error) -> ChatJsonError {
         ChatJsonError::IoError(err)
     }
 }
 
-impl FromError<json::ParserError> for ChatJsonError {
-    fn from_error(err: json::ParserError) -> ChatJsonError {
+impl From<json::ParserError> for ChatJsonError {
+    fn from(err: json::ParserError) -> ChatJsonError {
         if let json::ParserError::IoError(e) = err {
             ChatJsonError::IoError(e)
         } else {
@@ -49,27 +50,10 @@ pub struct ChatJson {
 impl ChatJson {
     pub fn from_reader(src: &mut io::Read) -> Result<ChatJson, ChatJsonError> {
         let json = try!(Json::from_reader(src));
-        Result::from(json)
+        ChatJson::from_json(json)
     }
-}
 
-impl From<String> for ChatJson {
-    fn from(msg: String) -> ChatJson {
-        ChatJson {
-            msg: Message::PlainText(msg), extra: None, color: None, formats: BTreeSet::new(),
-            click_event: None, hover_event: None, insertion: None
-        }
-    }
-}
-
-impl<'a> From<&'a str> for ChatJson {
-    fn from(msg: &str) -> ChatJson {
-        ChatJson::from(msg.to_string())
-    }
-}
-
-impl From<Json> for Result<ChatJson, ChatJsonError> {
-    fn from(json: Json) -> Result<ChatJson, ChatJsonError> {
+    pub fn from_json(json: Json) -> Result<ChatJson, ChatJsonError> {
         if let Json::Object(map) = json {
             let mut result = ChatJson::from("");
             for (key, value) in map {
@@ -91,9 +75,9 @@ impl From<Json> for Result<ChatJson, ChatJsonError> {
                     },
                     "color" => {
                         if let Json::String(string) = value {
-                            result.color = match Option::from(&string) {
-                                None => return Err(ChatJsonError::InvalidColor(string)),
-                                c => c
+                            result.color = match Color::from_str(&string) {
+                                Err(_) => return Err(ChatJsonError::InvalidColor(string)),
+                                Ok(c) => Some(c)
                             };
                         } else {
                             return Err(ChatJsonError::InvalidFieldType);
@@ -167,6 +151,21 @@ impl From<Json> for Result<ChatJson, ChatJsonError> {
         } else {
             Err(ChatJsonError::NotAnObject)
         }
+    }
+}
+
+impl From<String> for ChatJson {
+    fn from(msg: String) -> ChatJson {
+        ChatJson {
+            msg: Message::PlainText(msg), extra: None, color: None, formats: BTreeSet::new(),
+            click_event: None, hover_event: None, insertion: None
+        }
+    }
+}
+
+impl<'a> From<&'a str> for ChatJson {
+    fn from(msg: &str) -> ChatJson {
+        ChatJson::from(msg.to_string())
     }
 }
 
@@ -337,7 +336,11 @@ mod test {
             "text": true
         }"#;
         let parsed = ChatJson::from_reader(&mut io::Cursor::new(blob.as_bytes()));
-        assert_eq!(&parsed, &Err(ChatJsonError::InvalidFieldType));
+        match parsed {
+            Err(ChatJsonError::InvalidFieldType) => (), // test passed
+            Err(_) => panic!("Wrong error type"),
+            Ok(_) => panic!("Should return error on invalid field type")
+        }
     }
 
     #[test]

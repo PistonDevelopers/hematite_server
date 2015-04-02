@@ -12,10 +12,10 @@ macro_rules! parse {
         $value.to_string()
     };
     ($value:ident, bool) => {
-        try!($value.parse().map_err(|_: ParseBoolError| io::Error::new(io::ErrorKind::InvalidInput, "invalid bool value", None)))
+        try!($value.parse().map_err(|_: ParseBoolError| io::Error::new(io::ErrorKind::InvalidInput, "invalid bool value")))
     };
     ($value:ident, i32) => {
-        try!($value.parse().map_err(|_: ParseIntError| io::Error::new(io::ErrorKind::InvalidInput, "invalid i32 value", None)))
+        try!($value.parse().map_err(|_: ParseIntError| io::Error::new(io::ErrorKind::InvalidInput, "invalid i32 value")))
     }
 }
 

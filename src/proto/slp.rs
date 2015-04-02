@@ -63,7 +63,7 @@ impl Protocol for Response {
     fn proto_decode(src: &mut Read) -> io::Result<Response> {
         let s = try!(<String as Protocol>::proto_decode(src));
         println!("Response proto_decode {}", s);
-        json::decode(&s).map_err(|_| io::Error::new(InvalidInput, "found invalid JSON", None))
+        json::decode(&s).map_err(|_| io::Error::new(InvalidInput, "found invalid JSON"))
     }
 }
 
@@ -104,7 +104,7 @@ pub fn response(mut stream: &mut TcpStream) -> io::Result<()> {
             try!(StatusResponse { response: resp }.write(stream));
             Ok(())
         }
-        wrong_packet => Err(io::Error::new(InvalidInput, "invalid packet read", Some(format!("expecting C->S StatusRequest packet, got {:?}", wrong_packet))))
+        wrong_packet => Err(io::Error::new(InvalidInput, &format!("Invalid packet read, expecting C->S StatusRequest packet, got {:?}", wrong_packet)[..]))
     }
 }
 
@@ -120,7 +120,7 @@ pub fn pong(mut stream: &mut TcpStream) -> io::Result<()> {
             try!(Pong { time: ping.time }.write(stream));
             Ok(())
         }
-        wrong_packet => Err(io::Error::new(InvalidInput, "invalid packet read", Some(format!("expecting C->S Ping packet, got {:?}", wrong_packet))))
+        wrong_packet => Err(io::Error::new(InvalidInput, &format!("Invalid packet read, expecting C->S Ping packet, got {:?}", wrong_packet)[..]))
     }
 }
 
@@ -135,7 +135,7 @@ pub fn request(mut stream: &mut TcpStream) -> io::Result<Response> {
     // S->C: Status Response packet
     match try!(Packet::read(stream)) {
         StatusResponse(resp) => Ok(resp.response),
-        wrong_packet => Err(io::Error::new(InvalidInput, "invalid packet read", Some(format!("expecting S->C StatusResponse packet, got {:?}", wrong_packet))))
+        wrong_packet => Err(io::Error::new(InvalidInput, &format!("Invalid packet read, expecting S->C StatusResponse packet, got {:?}", wrong_packet)[..]))
     }
 }
 
@@ -155,7 +155,7 @@ pub fn ping(mut stream: &mut TcpStream) -> io::Result<i64> {
             let elapsed = end.sub(start).num_milliseconds();
             Ok(elapsed)
         }
-        wrong_packet => Err(io::Error::new(InvalidInput, "invalid packet read", Some(format!("expecting S->C Pong packet, got {:?}", wrong_packet))))
+        wrong_packet => Err(io::Error::new(InvalidInput, &format!("Invalid packet read, expecting S->C Pong packet, got {:?}", wrong_packet)[..]))
     }
 }
 

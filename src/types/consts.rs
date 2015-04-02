@@ -3,6 +3,7 @@
 use std::io::prelude::*;
 use std::io;
 use std::num::FromPrimitive;
+use std::str::FromStr;
 
 use packet::Protocol;
 
@@ -26,7 +27,7 @@ macro_rules! enum_protocol_impl {
                 let value = try!(<$repr as Protocol>::proto_decode(src));
                 match FromPrimitive::$dec_repr(value) {
                     Some(x) => Ok(x),
-                    None => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid enum", None))
+                    None => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid enum"))
                 }
             }
         }
@@ -86,26 +87,28 @@ impl AsRef<str> for Color {
     }
 }
 
-impl<'a> From<&'a str> for Option<Color> {
-    fn from(string: &str) -> Option<Color> {
+impl FromStr for Color {
+    type Err = ();
+
+    fn from_str(string: &str) -> Result<Color, ()> {
         match string {
-            "black"        => Some(Color::Black),
-            "dark_blue"    => Some(Color::DarkBlue),
-            "dark_green"   => Some(Color::DarkGreen),
-            "dark_aqua"    => Some(Color::DarkCyan),
-            "dark_red"     => Some(Color::DarkRed),
-            "dark_purple"  => Some(Color::Purple),
-            "gold"         => Some(Color::Gold),
-            "gray"         => Some(Color::Gray),
-            "dark_gray"    => Some(Color::DarkGray),
-            "blue"         => Some(Color::Blue),
-            "green"        => Some(Color::BrightGreen),
-            "aqua"         => Some(Color::Cyan),
-            "red"          => Some(Color::Red),
-            "light_purple" => Some(Color::Pink),
-            "yellow"       => Some(Color::Yellow),
-            "white"        => Some(Color::White),
-            _              => None
+            "black"        => Ok(Color::Black),
+            "dark_blue"    => Ok(Color::DarkBlue),
+            "dark_green"   => Ok(Color::DarkGreen),
+            "dark_aqua"    => Ok(Color::DarkCyan),
+            "dark_red"     => Ok(Color::DarkRed),
+            "dark_purple"  => Ok(Color::Purple),
+            "gold"         => Ok(Color::Gold),
+            "gray"         => Ok(Color::Gray),
+            "dark_gray"    => Ok(Color::DarkGray),
+            "blue"         => Ok(Color::Blue),
+            "green"        => Ok(Color::BrightGreen),
+            "aqua"         => Ok(Color::Cyan),
+            "red"          => Ok(Color::Red),
+            "light_purple" => Ok(Color::Pink),
+            "yellow"       => Ok(Color::Yellow),
+            "white"        => Ok(Color::White),
+            _              => Err(())
         }
     }
 }

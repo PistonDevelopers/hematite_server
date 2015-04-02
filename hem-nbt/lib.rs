@@ -1,15 +1,12 @@
 //! MC Named Binary Tag type.
 
-#![feature(core)]
-#![feature(io)]
-#![feature(test)]
+#![feature(core, test)]
 
 extern crate byteorder;
 extern crate flate2;
 extern crate test;
 
 use std::collections::HashMap;
-use std::error::FromError;
 use std::fmt;
 use std::io;
 use std::io::ErrorKind::InvalidInput;
@@ -28,7 +25,7 @@ use flate2::write::{GzEncoder, ZlibEncoder};
 ///
 /// `NbtError`s can be seamlessly converted to more general `io::Error` objects
 /// using the `FromError` trait.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 pub enum NbtError {
     /// Wraps errors emitted by methods during I/O operations.
     IoError(io::Error),
@@ -48,20 +45,20 @@ pub enum NbtError {
     IncompleteNbtValue,
 }
 
-impl FromError<io::Error> for NbtError {
-    fn from_error(e: io::Error) -> NbtError {
+impl From<io::Error> for NbtError {
+    fn from(e: io::Error) -> NbtError {
         NbtError::IoError(e)
     }
 }
 
-impl FromError<string::FromUtf8Error> for NbtError {
-    fn from_error(_: string::FromUtf8Error) -> NbtError {
+impl From<string::FromUtf8Error> for NbtError {
+    fn from(_: string::FromUtf8Error) -> NbtError {
         NbtError::InvalidUtf8
     }
 }
 
-impl FromError<byteorder::Error> for NbtError {
-    fn from_error(err: byteorder::Error) -> NbtError {
+impl From<byteorder::Error> for NbtError {
+    fn from(err: byteorder::Error) -> NbtError {
         match err {
             // Promote byteorder's I/O errors to NbtError's I/O errors.
             byteorder::Error::Io(e) => NbtError::IoError(e),
@@ -71,20 +68,20 @@ impl FromError<byteorder::Error> for NbtError {
     }
 }
 
-impl FromError<NbtError> for io::Error {
-    fn from_error(e: NbtError) -> io::Error {
+impl From<NbtError> for io::Error {
+    fn from(e: NbtError) -> io::Error {
         match e {
             NbtError::IoError(e) => e,
             NbtError::InvalidTypeId(id) =>
-                io::Error::new(InvalidInput, "invalid NbtValue id", Some(format!("id = {}", id))),
+                io::Error::new(InvalidInput, &format!("invalid NBT value type: {}", id)[..]),
             NbtError::HeterogeneousList =>
-                io::Error::new(InvalidInput, "List values must be homogeneous", None),
+                io::Error::new(InvalidInput, "List values must be homogeneous"),
             NbtError::NoRootCompound =>
-                io::Error::new(InvalidInput, "root value must be a Compound (0x0a)", None),
+                io::Error::new(InvalidInput, "root value must be a Compound (0x0a)"),
             NbtError::InvalidUtf8 =>
-                io::Error::new(InvalidInput, "string is not UTF-8", None),
+                io::Error::new(InvalidInput, "string is not UTF-8"),
             NbtError::IncompleteNbtValue =>
-                io::Error::new(InvalidInput, "data does not represent a complete NbtValue", None),
+                io::Error::new(InvalidInput, "data does not represent a complete NbtValue"),
         }
     }
 }

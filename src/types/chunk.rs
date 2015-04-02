@@ -49,10 +49,7 @@ impl ChunkColumn {
         }
         Ok(dst.into_inner())
     }
-    //
     pub fn decode(mut src: &mut Read, mask: u16, continuous: bool, sky_light: bool) -> io::Result<ChunkColumn> {
-        use std::num::Int;
-
         let num_chunks = mask.count_ones();
         let mut chunks = Vec::new();
         // NOTE: vec![Chunk::empty(); num_chunks as usize] won't work

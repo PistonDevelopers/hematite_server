@@ -53,7 +53,7 @@ impl Protocol for Var<i32> {
         }
 
         // The number is too large to represent in a 32-bit value.
-        Err(io::Error::new(io::ErrorKind::InvalidInput, "VarInt too big", None))
+        Err(io::Error::new(io::ErrorKind::InvalidInput, "VarInt too big"))
     }
 }
 
@@ -99,7 +99,7 @@ impl Protocol for Var<i64> {
         }
 
         // The number is too large to represent in a 64-bit value.
-        Err(io::Error::new(io::ErrorKind::InvalidInput, "VarLong too big", None))
+        Err(io::Error::new(io::ErrorKind::InvalidInput, "VarLong too big"))
     }
 }
 

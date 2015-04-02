@@ -10,7 +10,7 @@ pub trait ReadExactExt: Read {
         let mut n_read = 0usize;
         while n_read < buf.len() {
             match try!(self.read(&mut buf[n_read..])) {
-                0 => { return Err(io::Error::new(io::ErrorKind::InvalidInput, "unexpected EOF", None)); }
+                0 => { return Err(io::Error::new(io::ErrorKind::InvalidInput, "unexpected EOF")); }
                 n => n_read += n
             }
         }

@@ -13,7 +13,7 @@ pub struct BlockPos;
 macro_rules! bounds_check {
     ($name:expr, $value:expr, $size:expr) => {
         if $value < -(1 << $size) || $value >= (1 << $size) {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "coordinate out of bounds", Some(format!("expected {} to {}, found {} for {} coord", -(1 << $size), (1 << $size) - 1, $value, $name))));
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, &format!("Coordinate out of bounds: expected {} to {}, found {} for {} coord", -(1 << $size), (1 << $size) - 1, $value, $name)[..]));
         }
     }
 }
