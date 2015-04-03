@@ -37,14 +37,14 @@ macro_rules! enum_protocol_impl {
 enum_protocol_impl!(Dimension, i8, from_i8);
 
 #[repr(i8)]
-#[derive(Copy, Debug, FromPrimitive, PartialEq)]
+#[derive(Clone, Copy, Debug, FromPrimitive, PartialEq)]
 pub enum Dimension {
     Nether = -1,
     Overworld = 0,
     End = 1
 }
 
-#[derive(Copy, Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Color {
     Black       = 0x0,
     DarkBlue    = 0x1,

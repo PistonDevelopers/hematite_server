@@ -106,7 +106,6 @@ impl fmt::Debug for ChunkColumn {
 /// Chunk is a group of 16x16x16 blocks.
 ///
 /// `block_light`, `sky_light` are nibble arrays (4bit values)
-#[derive(Copy)]
 pub struct Chunk {
     pub blocks: [u16; 4096],
     pub block_light: [u8; 2048],
