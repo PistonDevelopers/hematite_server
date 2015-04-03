@@ -161,20 +161,17 @@ pub fn ping(mut stream: &mut TcpStream) -> io::Result<i64> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    use std::io::prelude::*;
+    use std::net::TcpStream;
+
+    use packet::handshake::Handshake;
+    use packet::{PacketWrite, NextState};
+
     #[test]
     #[cfg(vanilla_server_required)]
     fn client_server_list_ping() {
-        // NOTE(toqueteos): There's just one test right now and it doesn't run
-        // by default so rustc sees all of these imports as unused, that's why
-        // they are in here.
-        use super::*;
-
-        use std::io::prelude::*;
-        use std::net::TcpStream;
-
-        use packet::handshake::Handshake;
-        use packet::{PacketWrite, NextState};
-
         let mut stream = TcpStream::connect("127.0.0.1:25565").unwrap();
         Handshake {
             proto_version: 47,
@@ -182,7 +179,26 @@ mod tests {
             server_port: 25565,
             next_state: NextState::Status
         }.write(&mut stream).unwrap();
-        request(&mut stream).unwrap();
-        ping(&mut stream).unwrap();
+        let response = request(&mut stream).unwrap();
+        println!("request {:?}", response);
+        let elapsed = ping(&mut stream).unwrap();
+        println!("ping {}", elapsed);
+    }
+
+    #[test]
+    #[should_panic]
+    #[cfg(vanilla_server_required)]
+    fn client_slp_reversed() {
+        let mut stream = TcpStream::connect("127.0.0.1:25565").unwrap();
+        let elapsed = ping(&mut stream).unwrap();
+        println!("ping {}", elapsed);
+        Handshake {
+            proto_version: 47,
+            server_address: "127.0.0.1".to_string(),
+            server_port: 25565,
+            next_state: NextState::Status
+        }.write(&mut stream).unwrap();
+        let response = request(&mut stream).unwrap();
+        println!("request {:?}", response);
     }
 }
