@@ -109,8 +109,7 @@ macro_rules! impl_protocol {
         impl Protocol for $name {
             type Clean = Self;
 
-            #[allow(unused_variables)]
-            fn proto_len(value: &$name) -> usize { 1 }
+            fn proto_len(_: &$name) -> usize { 1 }
 
             fn proto_encode(value: &$name, mut dst: &mut Write) -> io::Result<()> {
                 try!(dst.$enc_name(*value));
@@ -126,8 +125,7 @@ macro_rules! impl_protocol {
         impl Protocol for $name {
             type Clean = Self;
 
-            #[allow(unused_variables)]
-            fn proto_len(value: &$name) -> usize { $len }
+            fn proto_len(_: &$name) -> usize { $len }
 
             fn proto_encode(value: &$name, mut dst: &mut Write) -> io::Result<()> {
                 try!(dst.$enc_name::<BigEndian>(*value));
@@ -218,8 +216,7 @@ impl_protocol!(f64, 8, write_f64, read_f64);
 impl Protocol for bool {
     type Clean = bool;
 
-    #[allow(unused_variables)]
-    fn proto_len(value: &bool) -> usize { 1 }
+    fn proto_len(_: &bool) -> usize { 1 }
 
     fn proto_encode(value: &bool, mut dst: &mut Write) -> io::Result<()> {
         try!(dst.write_u8(if *value { 1 } else { 0 }));

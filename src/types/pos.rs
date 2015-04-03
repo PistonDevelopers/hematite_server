@@ -20,8 +20,7 @@ macro_rules! bounds_check {
 impl Protocol for BlockPos {
     type Clean = [i32; 3];
 
-    #[allow(unused_variables)]
-    fn proto_len(value: &[i32; 3]) -> usize { 8 }
+    fn proto_len(_: &[i32; 3]) -> usize { 8 }
 
     fn proto_encode(value: &[i32; 3], mut dst: &mut Write) -> io::Result<()> {
         let x = value[0].clone();

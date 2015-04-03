@@ -15,7 +15,6 @@ macro_rules! enum_protocol_impl {
         impl Protocol for $name {
             type Clean = $name;
 
-            #[allow(unused_variables)]
             fn proto_len(value: &$name) -> usize { <$repr as Protocol>::proto_len(&(*value as $repr)) }
 
             fn proto_encode(value: &$name, mut dst: &mut Write) -> io::Result<()> {
