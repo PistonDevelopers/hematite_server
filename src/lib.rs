@@ -1,6 +1,6 @@
 #![feature(core, plugin, step_by, test)]
 #![cfg_attr(test, deny(missing_docs, warnings))]
-#![plugin(regex_macros)]
+#![plugin(json_macros, regex_macros)]
 
 extern crate byteorder;
 extern crate flate2;

@@ -50,7 +50,7 @@ impl<T> Join<char> for T where T: IntoIterator, <T as IntoIterator>::Item: AsRef
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Range<T> {
     pub start: Option<T>,
     pub end: Option<T>

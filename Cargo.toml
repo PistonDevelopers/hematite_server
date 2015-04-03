@@ -21,6 +21,7 @@ path = "src/lib.rs"
 [dependencies]
 byteorder = "*"
 flate2 = "*"
+json_macros = "*"
 regex = "*"
 regex_macros = "*"
 rustc-serialize = "*"
