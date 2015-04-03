@@ -1,4 +1,5 @@
 #![feature(core, step_by, test)]
+#![cfg_attr(test, deny(missing_docs, warnings))]
 
 extern crate byteorder;
 extern crate flate2;
