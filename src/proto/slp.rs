@@ -159,8 +159,15 @@ pub fn ping(mut stream: &mut TcpStream) -> io::Result<i64> {
     }
 }
 
+#[allow(unused_imports)]
 #[cfg(test)]
 mod tests {
+    // This module is special, compiler sees imports as they were unused
+    // because there's no `vanilla_server_required` cfg set.
+    //
+    // Unless we tell Travis to run a vanilla server, these tests will
+    // only get run if the cfg attr is removed manually.
+
     use super::*;
 
     use std::io::prelude::*;
