@@ -72,6 +72,11 @@ impl McaFile {
             columns: columns
         })
     }
+
+    pub fn write(&self) -> io::Result<()> {
+        self.columns
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
