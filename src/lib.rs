@@ -1,9 +1,11 @@
-#![feature(core, step_by, test)]
+#![feature(core, plugin, step_by, test)]
 #![cfg_attr(test, deny(missing_docs, warnings))]
+#![plugin(regex_macros)]
 
 extern crate byteorder;
 extern crate flate2;
 extern crate nbt;
+extern crate regex;
 extern crate rustc_serialize;
 extern crate test;
 extern crate time;
