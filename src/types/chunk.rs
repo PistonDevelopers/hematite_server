@@ -16,9 +16,7 @@ pub struct ChunkColumn {
 
 impl ChunkColumn {
     pub fn len(&self) -> usize {
-        use std::iter::AdditiveIterator;
-
-        let chunks = self.chunks.iter().map(|x| x.len()).sum();
+        let chunks = self.chunks.iter().map(|x| x.len()).sum::<usize>();
         let biomes = match self.biomes {
             Some(_) => 256,
             None => 0

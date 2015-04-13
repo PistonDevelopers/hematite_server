@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io;
 use std::io::ErrorKind::InvalidInput;
-use std::iter::AdditiveIterator;
 use std::ops::Index;
 use std::string;
 
@@ -151,13 +150,13 @@ impl NbtValue {
             NbtValue::String(ref val)    => 2 + val.len(), // size + bytes
             NbtValue::List(ref vals)     => {
                 // tag + size + payload for each element
-                5 + vals.iter().map(|x| x.len()).sum()
+                5 + vals.iter().map(|x| x.len()).sum::<usize>()
             },
             NbtValue::Compound(ref vals) => {
                 vals.iter().map(|(name, nbt)| {
                     // tag + name + payload for each entry
                     3 + name.len() + nbt.len()
-                }).sum() + 1 // + u8 for the Tag_End
+                }).sum::<usize>() + 1 // + u8 for the Tag_End
             },
             NbtValue::IntArray(ref val)  => 4 + 4 * val.len(),
         }
