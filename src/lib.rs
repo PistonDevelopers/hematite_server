@@ -6,6 +6,7 @@ extern crate byteorder;
 extern crate flate2;
 extern crate nbt;
 extern crate regex;
+extern crate regex_macros;
 extern crate rustc_serialize;
 extern crate test;
 extern crate time;

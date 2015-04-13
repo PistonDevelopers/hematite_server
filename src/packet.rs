@@ -360,13 +360,11 @@ pub mod play {
             impl Protocol for ChunkDataBulk {
                 type Clean = Self;
                 fn proto_len(this: &Self) -> usize {
-                    use std::iter::AdditiveIterator;
-
                     let columns = this.chunk_meta.len() as i32;
                     1 // sky_light_sent(bool) len is constant
                     + <Var<i32> as Protocol>::proto_len(&columns)
-                    + this.chunk_meta.iter().map(|cm| <ChunkMeta as Protocol>::proto_len(cm)).sum()
-                    + this.chunk_data.iter().map(|cd| cd.len()).sum()
+                    + this.chunk_meta.iter().map(<ChunkMeta as Protocol>::proto_len).sum::<usize>()
+                    + this.chunk_data.iter().map(|cd| cd.len()).sum::<usize>()
                 }
                 fn proto_encode(this: &Self, mut dst: &mut Write) -> io::Result<()> {
                     try!(<bool as Protocol>::proto_encode(&this.sky_light_sent, dst));

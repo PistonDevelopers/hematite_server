@@ -43,8 +43,6 @@ impl EntityMetadata {
 impl Protocol for EntityMetadata {
     type Clean = EntityMetadata;
     fn proto_len(value: &EntityMetadata) -> usize {
-        use std::iter::AdditiveIterator;
-
         fn entry_len(value: &Entry) -> usize {
             match value {
                 &Entry::Byte(_) => 1,
@@ -57,7 +55,7 @@ impl Protocol for EntityMetadata {
                 | &Entry::Float3(_) => 12,
             }
         }
-        value.dict.values().map(|v| entry_len(v)).sum()
+        value.dict.values().map(entry_len).sum()
     }
     fn proto_encode(value: &EntityMetadata, dst: &mut Write) -> io::Result<()> {
         fn key(k: u8, idx: u8) -> u8 {

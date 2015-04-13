@@ -2,7 +2,7 @@
 
 use std::io;
 use std::io::prelude::*;
-use std::iter::{ AdditiveIterator, FromIterator };
+use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::num::{ NumCast, ToPrimitive };
 
@@ -15,7 +15,7 @@ impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
 
     fn proto_len(value: &Vec<T::Clean>) -> usize {
         let len_len = <L as Protocol>::proto_len(&(<<L as Protocol>::Clean as NumCast>::from(value.len()).unwrap()));
-        let len_values = value.iter().map(|elt| <T as Protocol>::proto_len(elt)).sum();
+        let len_values = value.iter().map(<T as Protocol>::proto_len).sum::<usize>();
         len_len + len_values
     }
 
