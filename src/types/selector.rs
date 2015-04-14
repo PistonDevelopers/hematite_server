@@ -4,7 +4,7 @@ use std::num::{ParseFloatError, ParseIntError};
 use std::str::FromStr;
 use util::{Join, Range};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// A selector attribute, representing either a specific value of type `T`, any value other than a specific one, or any value.
 pub enum Attr<T> {
     Is(T),
@@ -37,7 +37,7 @@ impl<'a, T: From<String>> From<&'a str> for Attr<T> {
 }
 
 #[derive(Debug)]
-pub enum SelectorError {
+pub enum Error {
     InvalidArgName(String),
     InvalidSigil(String),
     MalformedFloat(ParseFloatError),
@@ -47,19 +47,19 @@ pub enum SelectorError {
     TooManyPositionalArgs
 }
 
-impl From<ParseFloatError> for SelectorError {
-    fn from(err: ParseFloatError) -> SelectorError {
-        SelectorError::MalformedFloat(err)
+impl From<ParseFloatError> for Error {
+    fn from(err: ParseFloatError) -> Error {
+        Error::MalformedFloat(err)
     }
 }
 
-impl From<ParseIntError> for SelectorError {
-    fn from(err: ParseIntError) -> SelectorError {
-        SelectorError::MalformedInt(err)
+impl From<ParseIntError> for Error {
+    fn from(err: ParseIntError) -> Error {
+        Error::MalformedInt(err)
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 /// An entity selector used in commands, for example `@p` or `@e[type=Creeper,c=2]`.
 pub struct EntitySelector {
     random: bool,
@@ -128,16 +128,16 @@ impl Default for EntitySelector {
 }
 
 impl FromStr for EntitySelector {
-    type Err = SelectorError;
+    type Err = Error;
 
-    fn from_str(s: &str) -> Result<EntitySelector, SelectorError> {
+    fn from_str(s: &str) -> Result<EntitySelector, Error> {
         if let Some(captures) = regex!(r"^@(.)(\[(.*)\])?$").captures(s) {
             let mut result = match captures.at(1).unwrap() {
                 "a" => EntitySelector::all(),
                 "e" => EntitySelector::default(),
                 "p" => EntitySelector::player(),
                 "r" => EntitySelector::random(),
-                sigil => return Err(SelectorError::InvalidSigil(sigil.to_string()))
+                sigil => return Err(Error::InvalidSigil(sigil.to_string()))
             };
             if let Some(args) = captures.at(3) {
                 let mut positional_seen = 0u8; // number of positional arguments (x, y, z, r) encountered
@@ -175,7 +175,7 @@ impl FromStr for EntitySelector {
                                     let objective = captures.at(1).unwrap();
                                     result.scores.entry(objective.to_string()).or_insert(Range::from(..)).start = Some(try!(i32::from_str(value)));
                                 } else {
-                                    return Err(SelectorError::InvalidArgName(k.to_string()));
+                                    return Err(Error::InvalidArgName(k.to_string()));
                                 }
                             }
                         }
@@ -183,7 +183,7 @@ impl FromStr for EntitySelector {
                     } else {
                         // positional argument
                         if named_seen {
-                            return Err(SelectorError::PositionalAfterNamed);
+                            return Err(Error::PositionalAfterNamed);
                         }
                         if regex!("^ *$").is_match(arg) {
                             // empty, keep default
@@ -193,7 +193,7 @@ impl FromStr for EntitySelector {
                                 1 => { result.position[1] = Some(try!(i32::from_str(arg))); }
                                 2 => { result.position[2] = Some(try!(i32::from_str(arg))); }
                                 3 => { result.radius = Range::from(..try!(i32::from_str(arg))); }
-                                _ => return Err(SelectorError::TooManyPositionalArgs)
+                                _ => return Err(Error::TooManyPositionalArgs)
                             }
                         }
                         positional_seen += 1;
@@ -202,7 +202,7 @@ impl FromStr for EntitySelector {
             }
             Ok(result)
         } else {
-            Err(SelectorError::MalformedSelector)
+            Err(Error::MalformedSelector)
         }
     }
 }

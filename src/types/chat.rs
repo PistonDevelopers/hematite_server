@@ -6,18 +6,49 @@ use std::str::FromStr;
 use rustc_serialize::{Encodable, Encoder};
 use rustc_serialize::json::{self, Json, ToJson};
 
+use types::EntitySelector;
 use types::consts::Color;
+use types::selector;
+
+#[derive(Debug)]
+pub enum JsonType {
+    Null,
+    Boolean,
+    Number,
+    String,
+    Array,
+    Object
+}
+
+impl<'a> From<&'a Json> for JsonType {
+    fn from(v: &Json) -> JsonType {
+        match *v {
+            Json::Null => JsonType::Null,
+            Json::Boolean(_) => JsonType::Boolean,
+            Json::I64(_) | Json::U64(_) | Json::F64(_) => JsonType::Number,
+            Json::String(_) => JsonType::String,
+            Json::Array(_) => JsonType::Array,
+            Json::Object(_) => JsonType::Object
+        }
+    }
+}
+
+impl From<Json> for JsonType {
+    fn from(v: Json) -> JsonType { JsonType::from(&v) }
+}
 
 #[derive(Debug)]
 pub enum ChatJsonError {
     MalformedJson(json::ParserError),
     IoError(io::Error),
-    NotAnObject,
-    InvalidFieldType,
+    InvalidFieldType { name: String, expected: JsonType, found: JsonType },
+    InvalidRootType(JsonType),
     UnknownField(String),
     InvalidColor(String),
     InvalidClickEvent,
-    InvalidHoverEvent
+    InvalidHoverEvent,
+    InvalidScore,
+    SelectorError(selector::Error)
 }
 
 impl From<io::Error> for ChatJsonError {
@@ -36,15 +67,33 @@ impl From<json::ParserError> for ChatJsonError {
     }
 }
 
+impl From<selector::Error> for ChatJsonError {
+    fn from(err: selector::Error) -> ChatJsonError {
+        ChatJsonError::SelectorError(err)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChatJson {
     pub msg: Message,
-    pub extra: Option<Vec<Json>>,
+    pub extra: Vec<ChatJson>,
     pub color: Option<Color>,
     pub formats: BTreeSet<Format>,
     pub click_event: Option<ClickEvent>,
     pub hover_event: Option<HoverEvent>,
     pub insertion: Option<String>
+}
+
+macro_rules! type_check {
+    ($k:expr => $v:expr, $t:ident($p:pat) $b:block) => {{
+        if let Json::$t($p) = $v $b else {
+            return Err(ChatJsonError::InvalidFieldType {
+                name: $k.to_string(),
+                expected: JsonType::$t,
+                found: JsonType::from($v)
+            });
+        }
+    }}
 }
 
 impl ChatJson {
@@ -54,102 +103,145 @@ impl ChatJson {
     }
 
     pub fn from_json(json: Json) -> Result<ChatJson, ChatJsonError> {
-        if let Json::Object(map) = json {
-            let mut result = ChatJson::from("");
-            for (key, value) in map {
-                println!("{:?}: {:?}", key, value);
-                match &key[..] {
-                    "text" => {
-                        if let Json::String(string) = value {
-                            result.msg = Message::PlainText(string);
-                        } else {
-                            return Err(ChatJsonError::InvalidFieldType);
+        match json {
+            Json::Object(map) => {
+                let mut result = ChatJson::from("");
+                for (key, value) in map {
+                    println!("{:?}: {:?}", key, value);
+                    match &key[..] {
+                        "text" => {
+                            type_check!(&key => value, String(string) {
+                                result.msg = Message::PlainText(string);
+                            });
                         }
-                    },
-                    "insertion" => {
-                        if let Json::String(string) = value {
-                            result.insertion = Some(string);
-                        } else {
-                            return Err(ChatJsonError::InvalidFieldType);
+                        "translate" => {
+                            type_check!(&key => value, String(string) {
+                                if let Message::Translatable(ref mut translatable, _) = result.msg {
+                                    *translatable = string;
+                                } else {
+                                    result.msg = Message::Translatable(string, vec![]);
+                                }
+                            });
                         }
-                    },
-                    "color" => {
-                        if let Json::String(string) = value {
-                            result.color = match Color::from_str(&string) {
-                                Err(_) => return Err(ChatJsonError::InvalidColor(string)),
-                                Ok(c) => Some(c)
-                            };
-                        } else {
-                            return Err(ChatJsonError::InvalidFieldType);
+                        "with" => {
+                            type_check!(&key => value, Array(with_json) {
+                                let with = try!(with_json.into_iter().map(ChatJson::from_json).collect());
+                                if let Message::Translatable(_, ref mut with_field) = result.msg {
+                                    *with_field = with;
+                                } else {
+                                    result.msg = Message::Translatable("".to_string(), with);
+                                }
+                            });
                         }
-                    },
-                    // Handle all of the different format strings.
-                    "bold"|"italic"|"underlined"|"strikethrough"|"obfuscated"|"reset"|"random" => {
-                        if let Json::Boolean(b) = value {
-                            if b == true {
-                                result.formats.insert(Format::from_string(&key).unwrap());
-                            }
-                        } else {
-                            return Err(ChatJsonError::InvalidFieldType);
+                        "score" => {
+                            type_check!(&key => value, Object(score) {
+                                let name: String = match score.get("name") {
+                                    Some(&Json::String(ref string)) => string.clone(),
+                                    _ => return Err(ChatJsonError::InvalidScore)
+                                };
+                                let objective: String = match score.get("objective") {
+                                    Some(&Json::String(ref string)) => string.clone(),
+                                    _ => return Err(ChatJsonError::InvalidScore)
+                                };
+                                // error when score contains additional fields
+                                if score.keys().any(|k| k != "name" && k != "objective") {
+                                    return Err(ChatJsonError::InvalidScore)
+                                }
+                                result.msg = Message::Score { name: name, objective: objective };
+                            });
                         }
-                    },
-                    // Handle the JSON format of click events.
-                    "clickEvent" => {
-                        if let Json::Object(event) = value {
-                            // Get the `value` first.
-                            let val: String = match event.get("value") {
-                                Some(&Json::String(ref string)) => string.clone(),
-                                _ => return Err(ChatJsonError::InvalidClickEvent)
-                            };
-                            // Handle the different click events.
-                            if let Some(&Json::String(ref string)) = event.get("action") {
-                                result.click_event = match &string[..] {
-                                    "open_url" => Some(ClickEvent::OpenUrl(val)),
-                                    "open_file" => Some(ClickEvent::OpenFile(val)),
-                                    "run_command" => Some(ClickEvent::RunCommand(val)),
-                                    "suggest_command" => Some(ClickEvent::SuggestCommand(val)),
+                        "selector" => {
+                            type_check!(&key => value, String(sel) {
+                                result.msg = Message::Selector(try!(EntitySelector::from_str(&sel)));
+                            });
+                        }
+                        "insertion" => {
+                            type_check!(&key => value, String(string) {
+                                result.insertion = Some(string);
+                            });
+                        }
+                        "color" => {
+                            type_check!(&key => value, String(string) {
+                                result.color = match Color::from_str(&string) {
+                                    Err(_) => return Err(ChatJsonError::InvalidColor(string)),
+                                    Ok(c) => Some(c)
+                                }
+                            });
+                        }
+                        // Handle all of the different format strings.
+                        "bold"|"italic"|"underlined"|"strikethrough"|"obfuscated"|"reset"|"random" => {
+                            type_check!(&key => value, Boolean(b) {
+                                if b == true {
+                                    result.formats.insert(Format::from_string(&key).unwrap());
+                                }
+                            });
+                        }
+                        // Handle the JSON format of click events.
+                        "clickEvent" => {
+                            type_check!(&key => value, Object(event) {
+                                // Get the `value` first.
+                                let val: String = match event.get("value") {
+                                    Some(&Json::String(ref string)) => string.clone(),
                                     _ => return Err(ChatJsonError::InvalidClickEvent)
                                 };
-                            } else {
-                                return Err(ChatJsonError::InvalidClickEvent);
-                            }
+                                // Handle the different click events.
+                                if let Some(&Json::String(ref string)) = event.get("action") {
+                                    result.click_event = match &string[..] {
+                                        "open_url" => Some(ClickEvent::OpenUrl(val)),
+                                        "open_file" => Some(ClickEvent::OpenFile(val)),
+                                        "run_command" => Some(ClickEvent::RunCommand(val)),
+                                        "suggest_command" => Some(ClickEvent::SuggestCommand(val)),
+                                        _ => return Err(ChatJsonError::InvalidClickEvent)
+                                    };
+                                } else {
+                                    return Err(ChatJsonError::InvalidClickEvent);
+                                }
+                                // error when clickEvent contains additional fields
+                                if event.keys().any(|k| k != "action" && k != "value") {
+                                    return Err(ChatJsonError::InvalidClickEvent)
+                                }
+                            });
                         }
-                    },
-                    // Handle the JSON format of hover events.
-                    "hoverEvent" => {
-                        if let Json::Object(event) = value {
-                            // Get the `value` first.
-                            let val: String = match event.get("value") {
-                                Some(&Json::String(ref string)) => string.clone(),
-                                _ => return Err(ChatJsonError::InvalidHoverEvent)
-                            };
-                            // Handle the different click events.
-                            if let Some(&Json::String(ref string)) = event.get("action") {
-                                result.hover_event = match &string[..] {
-                                    "show_text" => Some(HoverEvent::Text(val)),
-                                    "show_achievement" => Some(HoverEvent::Achievement(val)),
-                                    "show_item" => Some(HoverEvent::Item(val)),
+                        // Handle the JSON format of hover events.
+                        "hoverEvent" => {
+                            type_check!(&key => value, Object(event) {
+                                // Get the `value` first.
+                                let val: String = match event.get("value") {
+                                    Some(&Json::String(ref string)) => string.clone(),
                                     _ => return Err(ChatJsonError::InvalidHoverEvent)
                                 };
-                            } else {
-                                return Err(ChatJsonError::InvalidHoverEvent);
-                            }
+                                // Handle the different click events.
+                                if let Some(&Json::String(ref string)) = event.get("action") {
+                                    result.hover_event = match &string[..] {
+                                        "show_text" => Some(HoverEvent::Text(val)),
+                                        "show_achievement" => Some(HoverEvent::Achievement(val)),
+                                        "show_item" => Some(HoverEvent::Item(val)),
+                                        _ => return Err(ChatJsonError::InvalidHoverEvent)
+                                    };
+                                } else {
+                                    return Err(ChatJsonError::InvalidHoverEvent);
+                                }
+                                // error when clickEvent contains additional fields
+                                if event.keys().any(|k| k != "action" && k != "value") {
+                                    return Err(ChatJsonError::InvalidHoverEvent)
+                                }
+                            });
                         }
-                    },
-                    "extra" => {
-                        if let Json::Array(extra) = value {
-                            result.extra = Some(extra);
-                        } else {
-                            return Err(ChatJsonError::InvalidFieldType);
+                        "extra" => {
+                            type_check!(&key => value, Array(extra) {
+                                result.extra = try!(extra.into_iter().map(|elt| ChatJson::from_json(elt)).collect());
+                            });
                         }
-                    },
-                    // TODO: Error on unknown key when the implementation is complete.
-                    _ => (),
-                };
+                        v => return Err(ChatJsonError::UnknownField(v.to_string()))
+                    };
+                }
+                Ok(result)
             }
-            Ok(result)
-        } else {
-            Err(ChatJsonError::NotAnObject)
+            Json::Array(array) => {
+                Ok(ChatJson { extra: try!(array.into_iter().map(|elt| ChatJson::from_json(elt)).collect()), ..ChatJson::from("") })
+            }
+            Json::String(string) => Ok(ChatJson::from(string)),
+            v => Err(ChatJsonError::InvalidRootType(JsonType::from(v)))
         }
     }
 }
@@ -157,8 +249,13 @@ impl ChatJson {
 impl From<String> for ChatJson {
     fn from(msg: String) -> ChatJson {
         ChatJson {
-            msg: Message::PlainText(msg), extra: None, color: None, formats: BTreeSet::new(),
-            click_event: None, hover_event: None, insertion: None
+            msg: Message::PlainText(msg),
+            extra: vec![],
+            color: None,
+            formats: BTreeSet::new(),
+            click_event: None,
+            hover_event: None,
+            insertion: None
         }
     }
 }
@@ -171,21 +268,40 @@ impl<'a> From<&'a str> for ChatJson {
 
 impl ToJson for ChatJson {
     fn to_json(&self) -> Json {
+        if let ChatJson { msg: Message::PlainText(ref text), ref extra, color: None, ref formats, click_event: None, hover_event: None, insertion: None } = *self {
+            if extra.len() == 0 && *formats == BTreeSet::new() {
+                // No formatting or other fancy stuff is used, just return the JSON string
+                return text.to_json();
+            }
+        }
+
         let mut d = BTreeMap::new();
 
         match self.msg {
             Message::PlainText(ref text) => {
                 d.insert("text".to_string(), text.to_json());
-            },
-            _ => unimplemented!()
+            }
+            Message::Score { ref name, ref objective } => {
+                d.insert("score".to_string(), json!({
+                    "name": (name),
+                    "objective": (objective)
+                }));
+            }
+            Message::Translatable(ref translate, ref with) => {
+                d.insert("translate".to_string(), translate.to_json());
+                d.insert("with".to_string(), with.to_json());
+            }
+            Message::Selector(ref sel) => {
+                d.insert("selector".to_string(), Json::String(String::from(sel)));
+            }
         };
 
         for format in &self.formats {
             d.insert(format.to_string(), Json::Boolean(true));
         }
 
-        if let Some(ref extra) = self.extra {
-            d.insert("extra".to_string(), extra.to_json());
+        if self.extra.len() > 0 {
+            d.insert("extra".to_string(), self.extra.to_json());
         }
         if let Some(ref color) = self.color {
             d.insert("color".to_string(), color.to_json());
@@ -210,12 +326,12 @@ impl Encodable for ChatJson {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Message {
     PlainText(String),
-    Score(String, String),
-    Translatable,
-    Selector
+    Score { name: String, objective: String },
+    Translatable(String, Vec<ChatJson>),
+    Selector(EntitySelector)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -337,7 +453,9 @@ mod test {
         }"#;
         let parsed = ChatJson::from_reader(&mut io::Cursor::new(blob.as_bytes()));
         match parsed {
-            Err(ChatJsonError::InvalidFieldType) => (), // test passed
+            Err(ChatJsonError::InvalidFieldType { name, expected: JsonType::String, found: JsonType::Boolean }) => {
+                assert_eq!(&name, "text");
+            }
             Err(_) => panic!("Wrong error type"),
             Ok(_) => panic!("Should return error on invalid field type")
         }
