@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::default::Default;
 use std::num::{ParseFloatError, ParseIntError};
 use std::str::FromStr;
 use util::{Join, Range};
