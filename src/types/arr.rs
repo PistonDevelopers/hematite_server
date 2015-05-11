@@ -4,7 +4,8 @@ use std::io;
 use std::io::prelude::*;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
-use std::num::{ NumCast, ToPrimitive };
+
+use num::{NumCast, ToPrimitive};
 
 use packet::Protocol;
 

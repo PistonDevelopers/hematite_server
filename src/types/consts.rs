@@ -2,8 +2,9 @@
 
 use std::io::prelude::*;
 use std::io;
-use std::num::FromPrimitive;
 use std::str::FromStr;
+
+use num::FromPrimitive;
 
 use packet::Protocol;
 
@@ -37,7 +38,7 @@ macro_rules! enum_protocol_impl {
 enum_protocol_impl!(Dimension, i8, from_i8);
 
 #[repr(i8)]
-#[derive(Clone, Copy, Debug, FromPrimitive, PartialEq)]
+#[derive(Clone, Copy, Debug, NumFromPrimitive, PartialEq)]
 pub enum Dimension {
     Nether = -1,
     Overworld = 0,

@@ -1,7 +1,6 @@
 //! MC Protocol Chunk data types.
 
 use std::fmt;
-use std::default::Default;
 use std::io::prelude::*;
 use std::io::{self, Cursor};
 
