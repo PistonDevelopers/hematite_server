@@ -44,6 +44,24 @@ pub enum NbtError {
     IncompleteNbtValue,
 }
 
+// Implement PartialEq manually, since std::io::Error is not PartialEq.
+impl PartialEq<NbtError> for NbtError {
+    fn eq(&self, other: &NbtError) -> bool {
+        use NbtError::{IoError, InvalidTypeId, HeterogeneousList, NoRootCompound,
+                       InvalidUtf8, IncompleteNbtValue};
+
+        match (self, other) {
+            (&IoError(_), &IoError(_))                 => true,
+            (&InvalidTypeId(a), &InvalidTypeId(b))     => a == b,
+            (&HeterogeneousList, &HeterogeneousList)   => true,
+            (&NoRootCompound, &NoRootCompound)         => true,
+            (&InvalidUtf8, &InvalidUtf8)               => true,
+            (&IncompleteNbtValue, &IncompleteNbtValue) => true,
+            _ => false
+        }
+    }
+}
+
 impl From<io::Error> for NbtError {
     fn from(e: io::Error) -> NbtError {
         NbtError::IoError(e)
@@ -345,17 +363,17 @@ impl fmt::Display for NbtValue {
 /// (through Gzip or zlib compression) methods.
 ///
 /// ```rust
-/// use nbt::{NbtBlob, NbtError, NbtValue};
+/// use nbt::{NbtBlob, NbtValue};
 ///
 /// // Create a `NbtBlob` from key/value pairs.
 /// let mut nbt = NbtBlob::new("".to_string());
-/// nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string()));
-/// nbt.insert("health".to_string(), NbtValue::Byte(100));
-/// nbt.insert("food".to_string(), NbtValue::Float(20.0));
+/// nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string())).unwrap();
+/// nbt.insert("health".to_string(), NbtValue::Byte(100)).unwrap();
+/// nbt.insert("food".to_string(), NbtValue::Float(20.0)).unwrap();
 ///
 /// // Write a compressed binary representation to a byte array.
 /// let mut dst = Vec::new();
-/// nbt.write_zlib(&mut dst);
+/// nbt.write_zlib(&mut dst).unwrap();
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct NbtBlob {
@@ -634,7 +652,7 @@ mod tests {
     fn nbt_no_root() {
         let bytes = vec![0x00];
         // Will fail, because the root is not a compound.
-        assert_eq!(NbtBlob::from_reader(&mut io::Cursor::new(bytes.as_slice())),
+        assert_eq!(NbtBlob::from_reader(&mut io::Cursor::new(&bytes[..])),
                 Err(NbtError::NoRootCompound));
     }
 
@@ -651,7 +669,7 @@ mod tests {
         ];
 
         // Will fail, because there is no end tag.
-        assert_eq!(NbtBlob::from_reader(&mut io::Cursor::new(bytes.as_slice())),
+        assert_eq!(NbtBlob::from_reader(&mut io::Cursor::new(&bytes[..])),
                 Err(NbtError::IncompleteNbtValue));
     }
 
@@ -666,7 +684,7 @@ mod tests {
                     0x01,
             0x00
         ];
-        assert_eq!(NbtBlob::from_reader(&mut io::Cursor::new(bytes.as_slice())),
+        assert_eq!(NbtBlob::from_reader(&mut io::Cursor::new(&bytes[..])),
                    Err(NbtError::InvalidTypeId(15)));
     }
 
@@ -685,8 +703,8 @@ mod tests {
     fn nbt_bad_compression() {
         // These aren't in the zlib or gzip format, so they'll fail.
         let bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-        assert!(NbtBlob::from_gzip(&mut io::Cursor::new(bytes.as_slice())).is_err());
-        assert!(NbtBlob::from_zlib(&mut io::Cursor::new(bytes.as_slice())).is_err());
+        assert!(NbtBlob::from_gzip(&mut io::Cursor::new(&bytes[..])).is_err());
+        assert!(NbtBlob::from_zlib(&mut io::Cursor::new(&bytes[..])).is_err());
     }
 
     #[test]
