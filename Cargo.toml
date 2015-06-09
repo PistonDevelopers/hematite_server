@@ -23,7 +23,7 @@ byteorder = "*"
 flate2 = "*"
 json_macros = "*"
 num = "*"
-num-macros = "*"
+#num-macros = "*"
 regex = "*"
 regex_macros = "*"
 rustc-serialize = "*"
@@ -32,3 +32,6 @@ uuid = "*"
 
 [dependencies.hematite-nbt]
 path = "hem-nbt"
+
+[dependencies.num-macros]
+git = "https://github.com/rust-lang/num.git" # crates.io version is outdated
