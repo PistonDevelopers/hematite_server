@@ -352,6 +352,54 @@ impl fmt::Display for NbtValue {
     }
 }
 
+impl From<i8> for NbtValue {
+    fn from(t: i8) -> NbtValue { NbtValue::Byte(t) }
+}
+
+impl From<i16> for NbtValue {
+    fn from(t: i16) -> NbtValue { NbtValue::Short(t) }
+}
+
+impl From<i32> for NbtValue {
+    fn from(t: i32) -> NbtValue { NbtValue::Int(t) }
+}
+
+impl From<i64> for NbtValue {
+    fn from(t: i64) -> NbtValue { NbtValue::Long(t) }
+}
+
+impl From<f32> for NbtValue {
+    fn from(t: f32) -> NbtValue { NbtValue::Float(t) }
+}
+
+impl From<f64> for NbtValue {
+    fn from(t: f64) -> NbtValue { NbtValue::Double(t) }
+}
+
+impl<'a> From<&'a str> for NbtValue {
+    fn from(t: &'a str) -> NbtValue { NbtValue::String(t.into()) }
+}
+
+impl From<String> for NbtValue {
+    fn from(t: String) -> NbtValue { NbtValue::String(t) }
+}
+
+impl From<Vec<i8>> for NbtValue {
+    fn from(t: Vec<i8>) -> NbtValue { NbtValue::ByteArray(t) }
+}
+
+impl<'a> From<&'a [i8]> for NbtValue {
+    fn from(t: &'a [i8]) -> NbtValue { NbtValue::ByteArray(t.into()) }
+}
+
+impl From<Vec<i32>> for NbtValue {
+    fn from(t: Vec<i32>) -> NbtValue { NbtValue::IntArray(t) }
+}
+
+impl<'a> From<&'a [i32]> for NbtValue {
+    fn from(t: &'a [i32]) -> NbtValue { NbtValue::IntArray(t.into()) }
+}
+
 /// An object in the Named Binary Tag (NBT) file format.
 ///
 /// This is essentially a map of names to `NbtValue`s, with an optional top-
@@ -367,9 +415,9 @@ impl fmt::Display for NbtValue {
 ///
 /// // Create a `NbtBlob` from key/value pairs.
 /// let mut nbt = NbtBlob::new("".to_string());
-/// nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string())).unwrap();
-/// nbt.insert("health".to_string(), NbtValue::Byte(100)).unwrap();
-/// nbt.insert("food".to_string(), NbtValue::Float(20.0)).unwrap();
+/// nbt.insert("name".to_string(), "Herobrine").unwrap();
+/// nbt.insert("health".to_string(), 100i8).unwrap();
+/// nbt.insert("food".to_string(), 20.0f32).unwrap();
 ///
 /// // Write a compressed binary representation to a byte array.
 /// let mut dst = Vec::new();
@@ -441,11 +489,13 @@ impl NbtBlob {
     /// This method will also return an error if a `NbtValue::List` with
     /// heterogeneous elements is passed in, because this is illegal in the NBT
     /// file format.
-    pub fn insert(&mut self, name: String, value: NbtValue) -> Result<(), NbtError> {
+    pub fn insert<V>(&mut self, name: String, value: V) -> Result<(), NbtError>
+           where V: Into<NbtValue> {
         // The follow prevents `List`s with heterogeneous tags from being
         // inserted into the file. It would be nicer to return an error, but
         // this would depart from the `HashMap` API for `insert`.
-        if let NbtValue::List(ref vals) = value {
+        let nvalue = value.into();
+        if let NbtValue::List(ref vals) = nvalue {
             if vals.len() != 0 {
                 let first_id = vals[0].id();
                 for nbt in vals {
@@ -456,7 +506,7 @@ impl NbtBlob {
             }
         }
         if let NbtValue::Compound(ref mut v) = self.content {
-            v.insert(name, value);
+            v.insert(name, nvalue);
         } else {
             unreachable!();
         }
@@ -515,11 +565,11 @@ mod tests {
     #[test]
     fn nbt_nonempty() {
         let mut nbt = NbtBlob::new("".to_string());
-        nbt.insert("name".to_string(), NbtValue::String("Herobrine".to_string())).unwrap();
-        nbt.insert("health".to_string(), NbtValue::Byte(100)).unwrap();
-        nbt.insert("food".to_string(), NbtValue::Float(20.0)).unwrap();
-        nbt.insert("emeralds".to_string(), NbtValue::Short(12345)).unwrap();
-        nbt.insert("timestamp".to_string(), NbtValue::Int(1424778774)).unwrap();
+        nbt.insert("name".to_string(),      "Herobrine").unwrap();
+        nbt.insert("health".to_string(),    100i8).unwrap();
+        nbt.insert("food".to_string(),      20.0f32).unwrap();
+        nbt.insert("emeralds".to_string(),  12345i16).unwrap();
+        nbt.insert("timestamp".to_string(), 1424778774i32).unwrap();
 
         let bytes = vec![
             0x0a,
