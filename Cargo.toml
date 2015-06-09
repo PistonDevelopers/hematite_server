@@ -30,8 +30,8 @@ rustc-serialize = "*"
 time = "*"
 uuid = "*"
 
-[dependencies.hematite-nbt]
-path = "hem-nbt"
+[dependencies.nbt]
+git = "https://github.com/PistonDevelopers/hematite_nbt.git"
 
 [dependencies.num-macros]
 git = "https://github.com/rust-lang/num.git" # crates.io version is outdated
