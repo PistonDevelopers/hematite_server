@@ -1,4 +1,5 @@
 language: rust
+rust: nightly
 notifications:
   irc: "irc.mozilla.org#hematite"
 script:
