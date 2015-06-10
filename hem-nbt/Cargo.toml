@@ -10,7 +10,7 @@ authors = [
 
 [lib]
 name = "nbt"
-path = "lib.rs"
+path = "src/lib.rs"
 
 [dependencies]
 byteorder = "*"
