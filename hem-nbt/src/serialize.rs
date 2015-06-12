@@ -22,6 +22,19 @@ pub trait NbtFmt {
     #[inline] fn is_bare() -> bool { false }
 }
 
+pub fn close_nbt<W>(dst: &mut W) -> Result<(), NbtError>
+    where W: io::Write {
+
+    dst.write_u8(0x00).map_err(From::from)
+}
+
+pub fn to_writer<W, T>(dst: &mut W, obj: T) -> Result<(), NbtError>
+    where W: io::Write,
+          T: NbtFmt
+{
+    obj.write_nbt_fmt_with_name(dst, "")
+}
+
 macro_rules! nbtfmt_value {
   ($T:ty, $method:ident, $tag:expr, $bare:expr) => (
     impl NbtFmt for $T {
