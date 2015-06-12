@@ -1,0 +1,19 @@
+[package]
+
+name = "hematite-nbt-macros"
+version = "0.0.1"
+authors = [
+    "Aaron Jacobs <atheriel@gmail.com>"
+]
+
+[lib]
+name = "nbt_macros"
+path = "lib.rs"
+plugin = true
+
+[[test]]
+name = "all"
+path = "tests.rs"
+
+[dependencies.hematite-nbt]
+path = ".."
