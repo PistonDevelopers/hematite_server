@@ -40,7 +40,6 @@ impl Protocol for Var<i32> {
     }
 
     /// Reads up to 5 bytes from `src`, until a valid `Var<i32>` is found.
-    #[allow(unused_variables)]
     fn proto_decode(mut src: &mut Read) -> io::Result<i32> {
         let mut x = 0i32;
 
@@ -85,13 +84,12 @@ impl Protocol for Var<i64> {
         }
     }
 
-    /// Reads up to 10 bytes from `dst`, until a valid `Var<i64>` is found.
-    #[allow(unused_variables)]
-    fn proto_decode(mut dst: &mut Read) -> io::Result<i64> {
+    /// Reads up to 10 bytes from `src`, until a valid `Var<i64>` is found.
+    fn proto_decode(mut src: &mut Read) -> io::Result<i64> {
         let mut x = 0i64;
 
         for shift in (0..64).step_by(7) {
-            let b = try!(dst.read_u8()) as i64;
+            let b = try!(src.read_u8()) as i64;
             x |= (b & 0x7F) << shift;
             if (b & 0x80) == 0 {
                 return Ok(x);
