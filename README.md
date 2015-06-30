@@ -8,6 +8,10 @@ This is the [Hematite][] server, an implementation of the [Minecraft][] server i
 
 The Hematite server is currently in very early stages of development and completely unusable.
 
+## Dependencies
+
+![dependencies](./Cargo.png)
+
 [Hematite]: http://hematite.piston.rs/ (Hematite)
 [Minecraft]: https://minecraft.net/ (Minecraft)
 [Rust]: http://www.rust-lang.org/ (The Rust Programming Language)
