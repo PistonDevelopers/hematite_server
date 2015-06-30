@@ -15,7 +15,6 @@ pub use self::arr::Arr;
 pub use self::chat::ChatJson;
 pub use self::chunk::{Chunk, ChunkColumn};
 pub use self::entity_metadata::EntityMetadata;
-pub use nbt::{NbtBlob, NbtError, NbtValue};
 pub use self::pos::BlockPos;
 pub use self::selector::EntitySelector;
 pub use self::slot::Slot;
