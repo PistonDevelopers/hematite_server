@@ -1,7 +1,7 @@
 #![feature(custom_derive, iter_arith, plugin, step_by, test)]
 #![cfg_attr(test, deny(missing_docs, warnings))]
 #![forbid(unused_variables)]
-#![plugin(json_macros, num_macros, regex_macros)]
+#![plugin(json_macros, num_macros)]
 
 extern crate byteorder;
 extern crate flate2;

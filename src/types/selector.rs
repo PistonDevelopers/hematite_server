@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::num::{ParseFloatError, ParseIntError};
 use std::str::FromStr;
+
+use regex::Regex;
+
 use util::{Join, Range};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -130,7 +133,7 @@ impl FromStr for EntitySelector {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<EntitySelector, Error> {
-        if let Some(captures) = regex!(r"^@(.)(\[(.*)\])?$").captures(s) {
+        if let Some(captures) = Regex::new(r"^@(.)(\[(.*)\])?$").unwrap().captures(s) {
             let mut result = match captures.at(1).unwrap() {
                 "a" => EntitySelector::all(),
                 "e" => EntitySelector::default(),
@@ -142,7 +145,7 @@ impl FromStr for EntitySelector {
                 let mut positional_seen = 0u8; // number of positional arguments (x, y, z, r) encountered
                 let mut named_seen = false; // whether a named argument has been encountered
                 for arg in args.split(',') {
-                    if let Some(captures) = regex!("^(.*)=(.*)$").captures(arg) {
+                    if let Some(captures) = Regex::new("^(.*)=(.*)$").unwrap().captures(arg) {
                         // named argument
                         let key = captures.at(1).unwrap();
                         let value = captures.at(2).unwrap();
@@ -167,10 +170,10 @@ impl FromStr for EntitySelector {
                             "rym" => { result.yaw.start = Some(try!(f32::from_str(value))); }
                             "type" => { result.entity_type = Attr::from(value) }
                             k => {
-                                if let Some(captures) = regex!("score_([A-Za-z]+)").captures(k) {
+                                if let Some(captures) = Regex::new("score_([A-Za-z]+)").unwrap().captures(k) {
                                     let objective = captures.at(1).unwrap();
                                     result.scores.entry(objective.to_string()).or_insert(Range::from(..)).end = Some(try!(i32::from_str(value)));
-                                } else if let Some(captures) = regex!("score_([A-Za-z]+)_min").captures(k) {
+                                } else if let Some(captures) = Regex::new("score_([A-Za-z]+)_min").unwrap().captures(k) {
                                     let objective = captures.at(1).unwrap();
                                     result.scores.entry(objective.to_string()).or_insert(Range::from(..)).start = Some(try!(i32::from_str(value)));
                                 } else {
@@ -184,7 +187,7 @@ impl FromStr for EntitySelector {
                         if named_seen {
                             return Err(Error::PositionalAfterNamed);
                         }
-                        if regex!("^ *$").is_match(arg) {
+                        if Regex::new("^ *$").unwrap().is_match(arg) {
                             // empty, keep default
                         } else {
                             match positional_seen {
