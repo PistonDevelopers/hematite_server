@@ -57,15 +57,17 @@ pub enum NextState {
 }
 
 mod prelude {
-    pub use packet::{BlockChangeRecord, ChunkMeta, Protocol, PacketRead, PacketWrite, Stat, NextState};
-    pub use proto::slp;
-    pub use types::consts::*;
-    pub use types::{Arr, BlockPos, ChunkColumn, NbtBlob, Slot, UuidString, Var};
-
     pub use std::io;
     pub use std::io::prelude::*;
 
+    pub use nbt;
+
     pub use uuid::Uuid;
+
+    pub use packet::{BlockChangeRecord, ChunkMeta, Protocol, PacketRead, PacketWrite, Stat, NextState};
+    pub use proto::slp;
+    pub use types::{Arr, BlockPos, ChunkColumn, Slot, UuidString, Var};
+    pub use types::consts::*;
 }
 
 macro_rules! packets {
@@ -455,7 +457,7 @@ pub mod play {
         0x46 => SetCompression { threshold: Var<i32> }
         // 0x47 => PlayerListHeaderFooter { header: Chat, footer: Chat }
         0x48 => ResourcePackSend { url: String, hash: String }
-        0x49 => UpdateEntityNbt { entity_id: Var<i32>, tag: NbtBlob }
+        0x49 => UpdateEntityNbt { entity_id: Var<i32>, tag: nbt::Blob }
     } }
     pub mod serverbound { packets! {
         0x00 => KeepAlive { keep_alive_id: i32 }

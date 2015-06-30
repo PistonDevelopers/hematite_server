@@ -1,4 +1,4 @@
-#![feature(core, custom_derive, plugin, step_by, test)]
+#![feature(custom_derive, iter_arith, plugin, step_by, test)]
 #![cfg_attr(test, deny(missing_docs, warnings))]
 #![plugin(json_macros, num_macros, regex_macros)]
 

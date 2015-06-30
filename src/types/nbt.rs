@@ -1,21 +1,23 @@
-//! A protocol implementation for `NbtBlob`s.
+//! A protocol implementation for `nbt::Blob`s.
 
 use std::io;
-use nbt::NbtBlob;
+
+use nbt;
+
 use packet::Protocol;
 
-impl Protocol for NbtBlob {
-    type Clean = NbtBlob;
+impl Protocol for nbt::Blob {
+    type Clean = nbt::Blob;
 
-    fn proto_len(value: &NbtBlob) -> usize {
+    fn proto_len(value: &nbt::Blob) -> usize {
         value.len()
     }
 
-    fn proto_encode(value: &NbtBlob, mut dst: &mut io::Write) -> io::Result<()> {
+    fn proto_encode(value: &nbt::Blob, mut dst: &mut io::Write) -> io::Result<()> {
         Ok(try!(value.write(dst)))
     }
 
-    fn proto_decode(mut src: &mut io::Read) -> io::Result<NbtBlob> {
-        Ok(try!(NbtBlob::from_reader(src)))
+    fn proto_decode(mut src: &mut io::Read) -> io::Result<nbt::Blob> {
+        Ok(try!(nbt::Blob::from_reader(src)))
     }
 }
