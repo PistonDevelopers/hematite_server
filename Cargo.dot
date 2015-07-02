@@ -1,0 +1,41 @@
+digraph hematite_server {
+  hematite_server [root=true]
+  hematite_server [fillcolor=red]
+  hematite_server [fontcolor=white]
+  hematite_server [style=filled]
+  hematite_server -> byteorder;
+  hematite_server -> flate2;
+  hematite_server -> json_macros;
+  hematite_server -> nbt;
+  hematite_server -> num;
+  hematite_server -> num_macros;
+  hematite_server -> regex;
+  hematite_server -> regex_macros;
+  hematite_server -> rustc_serialize;
+  hematite_server -> time;
+  hematite_server -> uuid;
+  aho_corasick -> memchr;
+  flate2 -> libc;
+  flate2 -> miniz_sys;
+  json_macros -> rustc_serialize;
+  kernel32_sys -> winapi;
+  kernel32_sys -> winapi_build;
+  memchr -> libc;
+  miniz_sys -> gcc;
+  miniz_sys -> libc;
+  nbt -> byteorder;
+  nbt -> flate2;
+  num -> rand;
+  num -> rustc_serialize;
+  rand -> libc;
+  regex -> aho_corasick;
+  regex -> memchr;
+  regex -> regex_syntax;
+  regex_macros -> regex;
+  time -> kernel32_sys;
+  time -> libc;
+  time -> winapi;
+  uuid -> rand;
+  uuid -> rustc_serialize;
+  winapi -> libc;
+}
