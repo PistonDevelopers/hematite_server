@@ -282,10 +282,10 @@ impl ToJson for ChatJson {
                 d.insert("text".to_string(), text.to_json());
             }
             Message::Score { ref name, ref objective } => {
-                d.insert("score".to_string(), json!({
-                    "name": (name),
-                    "objective": (objective)
-                }));
+                let mut score = json::Object::default();
+                score.insert("name".to_owned(), Json::String(name.clone()));
+                score.insert("objective".to_owned(), Json::String(objective.clone()));
+                d.insert("score".to_string(), Json::Object(score));
             }
             Message::Translatable(ref translate, ref with) => {
                 d.insert("translate".to_string(), translate.to_json());

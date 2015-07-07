@@ -362,8 +362,8 @@ pub mod play {
                     let columns = this.chunk_meta.len() as i32;
                     1 // sky_light_sent(bool) len is constant
                     + <Var<i32> as Protocol>::proto_len(&columns)
-                    + this.chunk_meta.iter().map(<ChunkMeta as Protocol>::proto_len).sum::<usize>()
-                    + this.chunk_data.iter().map(|cd| cd.len()).sum::<usize>()
+                    + this.chunk_meta.iter().map(<ChunkMeta as Protocol>::proto_len).fold(0, |acc, item| acc + item)
+                    + this.chunk_data.iter().map(|cd| cd.len()).fold(0, |acc, item| acc + item)
                 }
                 fn proto_encode(this: &Self, mut dst: &mut Write) -> io::Result<()> {
                     try!(<bool as Protocol>::proto_encode(&this.sky_light_sent, dst));
