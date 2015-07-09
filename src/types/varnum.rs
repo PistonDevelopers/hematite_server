@@ -43,7 +43,7 @@ impl Protocol for Var<i32> {
     fn proto_decode(mut src: &mut Read) -> io::Result<i32> {
         let mut x = 0i32;
 
-        for shift in (0..32).step_by(7) {
+        for shift in [0u32, 7, 14, 21, 28].into_iter() { // (0..32).step_by(7)
             let b = try!(src.read_u8()) as i32;
             x |= (b & 0x7F) << shift;
             if (b & 0x80) == 0 {
@@ -88,7 +88,7 @@ impl Protocol for Var<i64> {
     fn proto_decode(mut src: &mut Read) -> io::Result<i64> {
         let mut x = 0i64;
 
-        for shift in (0..64).step_by(7) {
+        for shift in [0u32, 7, 14, 21, 28, 35, 42, 49, 56, 63].into_iter() {
             let b = try!(src.read_u8()) as i64;
             x |= (b & 0x7F) << shift;
             if (b & 0x80) == 0 {

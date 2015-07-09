@@ -1,5 +1,4 @@
 [package]
-
 name = "hematite_server"
 version = "0.0.1"
 authors = [
@@ -21,17 +20,11 @@ path = "src/lib.rs"
 [dependencies]
 byteorder = "*"
 flate2 = "*"
-json_macros = "*"
 num = "*"
-#num-macros = "*"
 regex = "*"
-regex_macros = "*"
 rustc-serialize = "*"
 time = "*"
 uuid = "*"
 
 [dependencies.nbt]
 git = "https://github.com/PistonDevelopers/hematite_nbt.git"
-
-[dependencies.num-macros]
-git = "https://github.com/rust-lang/num.git" # crates.io version is outdated

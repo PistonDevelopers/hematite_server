@@ -16,7 +16,7 @@ impl<L: Protocol, T: Protocol> Protocol for Arr<L, T> where L::Clean: NumCast {
 
     fn proto_len(value: &Vec<T::Clean>) -> usize {
         let len_len = <L as Protocol>::proto_len(&(<<L as Protocol>::Clean as NumCast>::from(value.len()).unwrap()));
-        let len_values = value.iter().map(<T as Protocol>::proto_len).sum::<usize>();
+        let len_values = value.iter().map(<T as Protocol>::proto_len).fold(0, |acc, item| acc + item);
         len_len + len_values
     }
 

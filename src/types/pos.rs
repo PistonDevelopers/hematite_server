@@ -50,7 +50,7 @@ impl<T: Protocol> Protocol for [T; 3] {
     type Clean = [T::Clean; 3];
 
     fn proto_len(value: &[T::Clean; 3]) -> usize {
-        value.iter().map(|coord| <T as Protocol>::proto_len(coord)).sum()
+        value.iter().map(|coord| <T as Protocol>::proto_len(coord)).fold(0, |acc, item| acc + item)
     }
 
     fn proto_encode(value: &[T::Clean; 3], dst: &mut Write) -> io::Result<()> {

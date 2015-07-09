@@ -37,11 +37,30 @@ macro_rules! enum_protocol_impl {
 enum_protocol_impl!(Dimension, i8, from_i8);
 
 #[repr(i8)]
-#[derive(Clone, Copy, Debug, NumFromPrimitive, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Dimension {
     Nether = -1,
     Overworld = 0,
     End = 1
+}
+
+impl FromPrimitive for Dimension {
+    fn from_i64(n: i64) -> Option<Dimension> {
+        match n {
+            -1 => Some(Dimension::Nether),
+            0 => Some(Dimension::Overworld),
+            1 => Some(Dimension::End),
+            _ => None
+        }
+    }
+
+    fn from_u64(n: u64) -> Option<Dimension> {
+        match n {
+            0 => Some(Dimension::Overworld),
+            1 => Some(Dimension::End),
+            _ => None
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

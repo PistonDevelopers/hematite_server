@@ -15,7 +15,7 @@ pub struct ChunkColumn {
 
 impl ChunkColumn {
     pub fn len(&self) -> usize {
-        let chunks = self.chunks.iter().map(|x| x.len()).sum::<usize>();
+        let chunks = self.chunks.iter().map(|x| x.len()).fold(0, |acc, item| acc + item);
         let biomes = match self.biomes {
             Some(_) => 256,
             None => 0
