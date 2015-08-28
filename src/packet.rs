@@ -9,7 +9,7 @@ use types::Var;
 
 /// A trait used for data which can be encoded/decoded as is.
 pub trait Protocol {
-    type Clean = Self;
+    type Clean;
 
     fn proto_len(value: &Self::Clean) -> usize;
     fn proto_encode(value: &Self::Clean, dst: &mut Write) -> io::Result<()>;
