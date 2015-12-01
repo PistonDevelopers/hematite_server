@@ -5,7 +5,7 @@ use std::io::prelude::*;
 use std::io::{self, Cursor};
 
 use packet::Protocol;
-use util::ReadExactExt;
+use util::ReadExactly;
 
 /// ChunkColumn is a set of 0-16 chunks, up to 16x256x16 blocks.
 pub struct ChunkColumn {
@@ -63,7 +63,7 @@ impl ChunkColumn {
             }
         }
         for chunk in &mut column.chunks {
-            // We use this instead of read_exact because it's an array, Vec is useless here.
+            // We use this instead of read_exactly because it's an array, Vec is useless here.
             for x in chunk.block_light.iter_mut() {
                 *x = try!(<u8 as Protocol>::proto_decode(src));
             }
@@ -73,7 +73,7 @@ impl ChunkColumn {
             // - 0x21 ChunkData uses `sky_light = dimension == Dimension::Overworld`
             // - 0x26 ChunkDataBulk uses `sky_light = true`
             if sky_light {
-                // We use this instead of read_exact because it's an array, Vec is useless here.
+                // We use this instead of read_exactly because it's an array, Vec is useless here.
                 let mut sl = [0u8; 2048];
                 for x in sl.iter_mut() {
                     *x = try!(<u8 as Protocol>::proto_decode(src));
@@ -82,7 +82,7 @@ impl ChunkColumn {
             }
         }
         if continuous {
-            let biomes = try!(src.read_exact(256));
+            let biomes = try!(src.read_exactly(256));
             // Vec<u8> -> [u8; 256]
             let mut bs = [0u8; 256];
             for (idx, elt) in biomes.into_iter().enumerate() {
