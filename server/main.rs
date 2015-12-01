@@ -24,7 +24,7 @@ impl log::Log for SimpleLogger {
     }
 }
 
-fn init() -> Result<(), SetLoggerError> {
+fn init_logger() -> Result<(), SetLoggerError> {
     log::set_logger(|max_log_level| {
         max_log_level.set(LogLevelFilter::Info);
         Box::new(SimpleLogger)
@@ -32,13 +32,13 @@ fn init() -> Result<(), SetLoggerError> {
 }
 
 fn main () {
-    init().unwrap();
+    init_logger().expect("failed to initialize logger");
 
     info!("hematite server");
 
-    let server = Server::new().unwrap();
+    let server = Server::new().expect("failed new server");
 
-    let listener = TcpListener::bind(&(server.addr(), server.port())).unwrap();
+    let listener = TcpListener::bind(&(server.addr(), server.port())).expect("failed tcp bind");
     // NOTE(toqueteos): As soon as we need &mut server reference this won't work
     let server_ref = Arc::new(server);
     // Accept connections and process them, spawning a new tasks for each one
