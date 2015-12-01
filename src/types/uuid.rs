@@ -6,7 +6,7 @@ use std::io;
 use std::str::FromStr;
 
 use packet::Protocol;
-use util::ReadExactExt;
+use util::ReadExactly;
 
 use uuid::{ParseError, Uuid};
 
@@ -20,7 +20,7 @@ impl Protocol for Uuid {
     }
     /// Reads 16 bytes from `src` and returns a `Uuid`
     fn proto_decode(mut src: &mut Read) -> io::Result<Uuid> {
-        let v = try!(src.read_exact(16));
+        let v = try!(src.read_exactly(16));
         Uuid::from_bytes(&v).ok_or(io::Error::new(io::ErrorKind::InvalidInput, &format!("Invalid UUID value: {:?} can't be used to create UUID", v)[..]))
     }
 }

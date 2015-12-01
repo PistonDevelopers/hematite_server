@@ -3,11 +3,11 @@ use std::io::prelude::*;
 use std::iter::IntoIterator;
 use std::ops;
 
-pub trait ReadExactExt: Read {
+pub trait ReadExactly: Read {
     /// Returns a `Vec<u8>` containing the next `len` bytes in the reader.
     ///
     /// Adapted from `byteorder::read_full`.
-    fn read_exact(&mut self, len: usize) -> io::Result<Vec<u8>> {
+    fn read_exactly(&mut self, len: usize) -> io::Result<Vec<u8>> {
         let mut buf = vec![0; len];
         let mut n_read = 0usize;
         while n_read < buf.len() {
@@ -20,7 +20,7 @@ pub trait ReadExactExt: Read {
     }
 }
 
-impl<R: Read> ReadExactExt for R {}
+impl<R: Read> ReadExactly for R {}
 
 pub trait Join<T> {
     fn join(self, T) -> String;
