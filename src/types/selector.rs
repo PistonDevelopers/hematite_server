@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::num::{ParseFloatError, ParseIntError};
 use std::str::FromStr;
 
-use regex::Regex;
-
 use util::{Join, Range};
+
+use regex::Regex;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A selector attribute, representing either a specific value of type `T`, any value other than a specific one, or any value.
