@@ -52,7 +52,7 @@ macro_rules! server_properties_impl {
                     let parts: Vec<&str> = line.trim().splitn(2, '=').collect();
                     let (prop, value) = (parts[0], parts[1]);
                     match prop {
-                        $(stringify!($field) => p.$field = parse!(value, $fty),)*
+                        $($hyphen => p.$field = parse!(value, $fty),)*
                         prop => println!("Unknown property {}", prop)
                     }
                 }
