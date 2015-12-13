@@ -49,7 +49,7 @@ macro_rules! server_properties_impl {
                     if line.trim().starts_with("#") {
                         continue
                     }
-                    let parts: Vec<&str> = line.trim().splitn(1, '=').collect();
+                    let parts: Vec<&str> = line.trim().splitn(2, '=').collect();
                     let (prop, value) = (parts[0], parts[1]);
                     match prop {
                         $(stringify!($field) => p.$field = parse!(value, $fty),)*
