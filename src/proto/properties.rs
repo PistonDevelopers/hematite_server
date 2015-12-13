@@ -2,7 +2,7 @@
 
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{self, BufReader, BufWriter};
+use std::io::{self, BufReader, BufWriter, Error, ErrorKind};
 use std::num::ParseIntError;
 use std::path::Path;
 use std::str::ParseBoolError;
@@ -27,7 +27,7 @@ macro_rules! server_properties_impl {
         /// Vanilla server.properties
         ///
         /// Documentation of each filed here: http://minecraft.gamepedia.com/Server.properties
-        #[derive(Debug)]
+        #[derive(Debug, PartialEq)]
         pub struct Properties {
             $(pub $field: $fty),*
         }
@@ -53,7 +53,7 @@ macro_rules! server_properties_impl {
                     let (prop, value) = (parts[0], parts[1]);
                     match prop {
                         $($hyphen => p.$field = parse!(value, $fty),)*
-                        prop => println!("Unknown property {}", prop)
+                        prop => { return Err(Error::new(ErrorKind::Other, &format!("Unknown property {}", prop)[..])); }
                     }
                 }
                 Ok(p)
@@ -79,6 +79,78 @@ macro_rules! server_properties_impl {
         #[cfg(test)]
         mod tests {
             use super::*;
+
+            #[test]
+            fn default_save_load() {
+                use std::env;
+                use std::fs;
+
+                let mut dir = env::temp_dir();
+                dir.push("default.properties");
+
+                let default_props = Properties::default();
+                match default_props.save(&dir) {
+                    Ok(_) => {},
+                    Err(err) => { panic!("Failed to save server.properties file with error: {}", err); }
+                }
+
+                match Properties::load(&dir) {
+                    Ok(props) => {
+                        assert_eq!(props, default_props);
+                    },
+                    Err(err) => {
+                        panic!("Failed to load server.properties file with error: {}", err);
+                    }
+                }
+
+                fs::remove_file(&dir).unwrap();
+            }
+
+            #[test]
+            fn custom_save_load() {
+                use std::env;
+                use std::fs;
+
+                let mut dir = env::temp_dir();
+                dir.push("custom.properties");
+
+                let custom_props = Properties{
+                    server_port: 25570,
+                    .. Properties::default()
+                };
+                match custom_props.save(&dir) {
+                    Ok(_) => {},
+                    Err(err) => { panic!("Failed to save server.properties file with error: {}", err); }
+                }
+
+                match Properties::load(&dir) {
+                    Ok(props) => { assert_eq!(props, custom_props); },
+                    Err(err) => { panic!("Failed to load server.properties file with error: {}", err); }
+                }
+
+                fs::remove_file(&dir).unwrap();
+            }
+
+            #[test]
+            fn load_unknown_property() {
+                use std::env;
+                use std::error::Error;
+                use std::fs;
+                use std::io::Write;
+
+                let mut dir = env::temp_dir();
+                dir.push("unknown.properties");
+
+                let mut f = fs::File::create(&dir).unwrap();
+                f.write_all(b"foo-bar=true\n").unwrap();
+
+                match Properties::load(&dir) {
+                    Ok(_) => { panic!("server.properties should have failed to load"); }
+                    Err(err) => { assert_eq!(err.description(), "Unknown property foo-bar"); },
+                }
+
+                fs::remove_file(&dir).unwrap();
+            }
 
             #[test]
             fn decode_default() {
