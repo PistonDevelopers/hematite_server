@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
+use std::fmt;
 use std::io;
 use std::str::FromStr;
 
@@ -91,6 +92,42 @@ impl From<json::ParserError> for ChatJsonError {
 impl From<selector::Error> for ChatJsonError {
     fn from(err: selector::Error) -> ChatJsonError {
         ChatJsonError::SelectorError(err)
+    }
+}
+
+// http://stackoverflow.com/a/28912145
+impl Error for ChatJsonError {
+    fn description(&self) -> &str {
+        match *self {
+            ChatJsonError::MalformedJson(ref parser_err) => parser_err.description(),
+            ChatJsonError::IoError(ref io_err) => io_err.description(),
+            ChatJsonError::InvalidFieldType { .. } => "invalid field type",
+            ChatJsonError::InvalidRootType(_) => "invalid root type",
+            ChatJsonError::UnknownField(_) => "unknown field",
+            ChatJsonError::InvalidColor(_) => "invalid color",
+            ChatJsonError::InvalidClickEvent => "invalid click event",
+            ChatJsonError::InvalidHoverEvent => "invalid hover event",
+            ChatJsonError::InvalidScore => "invalid score",
+            ChatJsonError::SelectorError(_) => "selector errror",
+        }
+    }
+}
+
+impl fmt::Display for ChatJsonError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ChatJsonError::MalformedJson(ref parser_err) => write!(f, "{}", parser_err.description()),
+            ChatJsonError::IoError(ref io_err) => write!(f, "{}", io_err.description()),
+            ChatJsonError::InvalidFieldType { ref name, ref expected, ref found } =>
+                write!(f, "invalid field type {}, expected {:?}, found {:?}", name, expected, found),
+            ChatJsonError::InvalidRootType(ref json_type) => write!(f, "invalid root type {:?}", json_type),
+            ChatJsonError::UnknownField(ref field) => write!(f, "unknown field {}", &field),
+            ChatJsonError::InvalidColor(ref color) => write!(f, "invalid color {}", &color),
+            ChatJsonError::InvalidClickEvent => write!(f, "invalid click event"),
+            ChatJsonError::InvalidHoverEvent => write!(f, "invalid hover event"),
+            ChatJsonError::InvalidScore => write!(f, "invalid score"),
+            ChatJsonError::SelectorError(_) => write!(f, "selector errror"),
+        }
     }
 }
 
@@ -336,7 +373,7 @@ impl ToJson for ChatJson {
         if let Some(ref ins) = self.insertion {
             d.insert("insertion".to_string(), ins.to_json());
         }
-        
+
         Json::Object(d)
     }
 }
