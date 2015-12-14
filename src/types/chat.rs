@@ -6,9 +6,30 @@ use std::str::FromStr;
 use rustc_serialize::{Encodable, Encoder};
 use rustc_serialize::json::{self, Json, ToJson};
 
+use packet::Protocol;
 use types::EntitySelector;
 use types::consts::Color;
 use types::selector;
+
+impl Protocol for ChatJson {
+    type Clean = ChatJson;
+
+    fn proto_len(value: &ChatJson) -> usize {
+        <String as Protocol>::proto_len(&(value.to_json().to_string()))
+    }
+
+    fn proto_encode(value: &ChatJson, mut dst: &mut io::Write) -> io::Result<()> {
+        let json_string = value.to_json().to_string();
+        Ok(try!(<String as Protocol>::proto_encode(&json_string, dst)))
+    }
+
+    fn proto_decode(mut src: &mut io::Read) -> io::Result<ChatJson> {
+        match ChatJson::from_reader(src) {
+            Ok(chat_json) => Ok(chat_json),
+            Err(err) => Err(io::Error::new(io::ErrorKind::Other, err))
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum JsonType {
