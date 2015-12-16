@@ -47,14 +47,15 @@ impl World {
         // - Read world info from disk
         // - Read some keypairs from server.properties
         try!(JoinGame {
-            entity_id: 0,
-            gamemode: 0b0010,
-            dimension: Dimension::Overworld,
-            difficulty: 2,
-            max_players: 20,
-            level_type: "default".to_string(),
-            reduced_debug_info: false
-        }.write(&mut stream));
+                 entity_id: 0,
+                 gamemode: 0b0000, // 0: Survival, 1: Creative, 2: Adventure, 3: Spectator
+                 dimension: Dimension::Overworld,
+                 difficulty: 2,
+                 max_players: 20,
+                 level_type: "default".to_string(),
+                 reduced_debug_info: false,
+             }
+             .write(&mut stream));
         debug!("<< JoinGame");
         // try!(stream.flush());
 
@@ -62,10 +63,11 @@ impl World {
         // are good, now they are just taken from Glowstone impl.
         // `flags` value is read from server's player list.
         try!(PlayerAbilities {
-            flags: 0b1101, // flying and creative
-            flying_speed: 0.05,
-            walking_speed: 0.1
-        }.write(&mut stream));
+                 flags: 0b0000, // god | can fly | flying | creative
+                 flying_speed: 0.05,
+                 walking_speed: 0.1,
+             }
+             .write(&mut stream));
         debug!("<< PlayerAbilities");
         // try!(stream.flush());
 
@@ -138,15 +140,6 @@ impl World {
         try!(ChangeGameState { reason: 9, value: 0.0 }.write(&mut stream));
         debug!("<< ChangeGameState SkyDarkness");
         // try!(stream.flush());
-
-        // Send Abilities
-        try!(PlayerAbilities {
-            flags: 0b1101, // flying and creative
-            flying_speed: 0.05,
-            walking_speed: 0.1
-        }.write(&mut stream));
-        debug!("<< PlayerAbilities");
-        try!(stream.flush());
 
         // // Send Inventory items
         // let wi = ClientWindowItems {
