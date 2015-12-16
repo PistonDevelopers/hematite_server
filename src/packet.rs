@@ -457,7 +457,7 @@ pub mod play {
         0x49 => UpdateEntityNbt { entity_id: Var<i32>, tag: nbt::Blob }
     } }
     pub mod serverbound { packets! {
-        0x00 => KeepAlive { keep_alive_id: i32 }
+        0x00 => KeepAlive { keep_alive_id: Var<i32> }
         0x01 => ChatMessage { message: String }
         // 0x02 => UseEntity { target_eid: i32, use_type: EntityUseAction }
         0x03 => PlayerIdle { on_ground: bool }
