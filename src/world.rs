@@ -57,7 +57,6 @@ impl World {
              }
              .write(&mut stream));
         debug!("<< JoinGame");
-        // try!(stream.flush());
 
         // FIXME(toqueteos): Verify `flying_speed` and `walking_speed` values
         // are good, now they are just taken from Glowstone impl.
@@ -69,7 +68,6 @@ impl World {
              }
              .write(&mut stream));
         debug!("<< PlayerAbilities");
-        // try!(stream.flush());
 
         // WRITE `MC|Brand` plugin
         try!(PluginMessage {
@@ -77,7 +75,6 @@ impl World {
             data: b"hematite".to_vec()
         }.write(&mut stream));
         debug!("<< PluginMessage");
-        // try!(stream.flush());
 
         // WRITE supported channels
         try!(PluginMessage {
@@ -85,7 +82,6 @@ impl World {
             data: b"MC|Brand\0".to_vec()
         }.write(&mut stream));
         debug!("<< PluginMessage");
-        // try!(stream.flush());
 
         // FIXME(toqueteos): We need a chunk loader handling disk reads and
         // using real chunks not made up ones.
@@ -111,12 +107,10 @@ impl World {
             chunk_data: data,
         }.write(&mut stream));
         debug!("<< ChunkDataBulk");
-        // try!(stream.flush());
 
         // Send Compass
         try!(WorldSpawn { location: [10, 65, 10] }.write(&mut stream));
         debug!("<< WorldSpawn");
-        // try!(stream.flush());
 
         // Send Time
         try!(TimeUpdate {
@@ -124,22 +118,18 @@ impl World {
             time_of_day: self.time_of_day()
         }.write(&mut stream));
         debug!("<< TimeUpdate");
-        // try!(stream.flush());
 
         // Send Weather
         try!(ChangeGameState { reason: 1, value: 0.0 }.write(&mut stream));
         debug!("<< ChangeGameState Weather");
-        // try!(stream.flush());
 
         // Send RainDensity
         try!(ChangeGameState { reason: 8, value: 0.0 }.write(&mut stream));
         debug!("<< ChangeGameState RainDensity");
-        // try!(stream.flush());
 
         // Send SkyDarkness
         try!(ChangeGameState { reason: 9, value: 0.0 }.write(&mut stream));
         debug!("<< ChangeGameState SkyDarkness");
-        // try!(stream.flush());
 
         // // Send Inventory items
         // let wi = ClientWindowItems {
@@ -148,7 +138,6 @@ impl World {
         // };
         // try!(wi.write(&mut stream));
         debug!("<< WindowItems (not sent)");
-        // try!(stream.flush());
 
         try!(PlayerPositionAndLook {
             position: [0.0, 64.0, 0.0],
@@ -157,7 +146,6 @@ impl World {
             flags: 0x1f
         }.write(&mut stream));
         debug!("<< PlayerPositionAndLook");
-        // try!(stream.flush());
 
         // Read Client Settings
         match try!(Packet::read(&mut stream)) {
@@ -168,7 +156,6 @@ impl World {
         // let cm = ChatMessage { data: Chat::new("Server: Welcome to hematite server!"), position: 1 };
         // try!(cm.write(&mut stream));
         // debug!("<< ChatMessage data={:?} position={}", cm.data, cm.position);
-        // try!(stream.flush());
 
         // Send first Keep Alive
         try!(KeepAlive { keep_alive_id: rand::random() }.write(&mut stream));
