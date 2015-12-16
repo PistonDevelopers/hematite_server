@@ -419,7 +419,7 @@ pub mod play {
         // 0x35 => UpdateBlockEntity { location: [i32; 3], action: u8, nbt_data: Nbt; impl Protocol for UpdateBlockEntity { ... } } // PROBLEM: nbt_data is omitted entirely if it encodes an empty NBT tag
         0x36 => SignEditorOpen { location: BlockPos }
         0x37 => Statistics { stats: Arr<Var<i32>, Stat> }
-        // 0x38 => UpdatePlayerList { action: Var<i32>, players: Arr<Var<i32>, PlayerListItem>; impl Protocol for UpdatePlayerList { ... } } // PROBLEM: suructure of `players` elements depends on `action`
+        // 0x38 => UpdatePlayerList { action: Var<i32>, players: Arr<Var<i32>, PlayerListItem>; impl Protocol for UpdatePlayerList { ... } } // PROBLEM: structure of `players` elements depends on `action`
         0x39 => PlayerAbilities { flags: i8, flying_speed: f32, walking_speed: f32 }
         0x3a => TabComplete { matches: Arr<Var<i32>, String> }
         // 0x3b => ScoreboardObjective { objective_name: String, mode: ObjectiveAction }
