@@ -66,7 +66,7 @@ mod prelude {
 
     pub use packet::{BlockChangeRecord, ChunkMeta, Protocol, PacketRead, PacketWrite, Stat, NextState};
     pub use proto::slp;
-    pub use types::{Arr, BlockPos, ChunkColumn, Slot, UuidString, Var};
+    pub use types::{Arr, BlockPos, ChatJson, ChunkColumn, Slot, UuidString, Var};
     pub use types::consts::*;
 }
 
@@ -319,7 +319,7 @@ pub mod play {
     pub mod clientbound { packets! {
         0x00 => KeepAlive { keep_alive_id: Var<i32> }
         0x01 => JoinGame { entity_id: i32, gamemode: u8, dimension: Dimension, difficulty: u8, max_players: u8, level_type: String, reduced_debug_info: bool }
-        // 0x02 => ChatMessage { data: Chat, position: i8 }
+        0x02 => ChatMessage { data: ChatJson, position: i8 }
         0x03 => TimeUpdate { world_age: i64, time_of_day: i64 }
         0x04 => EntityEquipment { entity_id: Var<i32>, slot: i16, item: Option<Slot> }
         0x05 => WorldSpawn { location: BlockPos }
@@ -445,7 +445,7 @@ pub mod play {
                 }
             }
         }
-        // 0x40 => Disconnect { reason: Chat }
+        0x40 => Disconnect { reason: ChatJson }
         0x41 => ServerDifficulty { difficulty: u8 }
         // 0x42 => PlayCombatEvent { event: CombatEvent }
         0x43 => Camera { camera_id: Var<i32> }
@@ -475,7 +475,7 @@ pub mod play {
         0x0f => ConfirmTransaction { window_id: u8, action_number: i16, accepted: bool }
         0x10 => CreativeInventoryAction { slot: i16, clicked_item: Option<Slot> }
         0x11 => EnchantItem { window_id: u8, enchantment: i8 }
-        // 0x12 => UpdateSign { location: BlockPos, line0: Chat, line1: Chat, line2: Chat, line3: Chat }
+        0x12 => UpdateSign { location: BlockPos, line0: ChatJson, line1: ChatJson, line2: ChatJson, line3: ChatJson }
         0x13 => PlayerAbilities { flags: i8, flying_speed: f32, walking_speed: f32 }
         0x14 => TabComplete { text: String, looking_at: Option<i64> }
         0x15 => ClientSettings { locale: String, view_distance: i8, chat_mode: i8, chat_colors: bool, displayed_skin_parts: u8 }
@@ -515,7 +515,7 @@ pub mod status {
 }
 pub mod login {
     pub mod clientbound { packets! {
-        // 0x00 => Disconnect { reason: Chat }
+        0x00 => Disconnect { reason: ChatJson }
         0x01 => EncryptionRequest { server_id: String, pubkey: Arr<Var<i32>, u8>, verify_token: Arr<Var<i32>, u8> }
         0x02 => LoginSuccess { uuid: UuidString, username: String }
         0x03 => SetCompression { threshold: Var<i32> }
