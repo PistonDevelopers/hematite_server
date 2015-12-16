@@ -4,17 +4,17 @@
 
 use std::io::{self, Write};
 use std::net::TcpStream;
+use std::sync::mpsc;
 
 use packet::{ChunkMeta, PacketRead, PacketWrite};
 use types::consts::*;
 use types::{Chunk, ChunkColumn};
 
-use rand;
 use time;
 
 /// World is a set of dimensions which tick in sync.
 pub struct World {
-    start: time::Timespec
+    start: time::Timespec,
 }
 
 impl World {
@@ -35,10 +35,13 @@ impl World {
     }
 
     #[allow(unreachable_code)]
-    pub fn handle_player(&self, mut stream: TcpStream) -> io::Result<()> {
+    pub fn handle_player(&self,
+                         mut stream: TcpStream,
+                         keep_alive_tx: mpsc::Sender<TcpStream>)
+                         -> io::Result<()> {
         use packet::play::serverbound::Packet;
         use packet::play::serverbound::Packet::ClientSettings;
-        use packet::play::clientbound::{ChangeGameState, ChunkDataBulk, JoinGame, KeepAlive};
+        use packet::play::clientbound::{ChangeGameState, ChunkDataBulk, JoinGame};
         use packet::play::clientbound::{PlayerAbilities, PlayerPositionAndLook};
         use packet::play::clientbound::{PluginMessage, TimeUpdate, WorldSpawn};
 
@@ -71,16 +74,18 @@ impl World {
 
         // WRITE `MC|Brand` plugin
         try!(PluginMessage {
-            channel: "MC|Brand".to_string(),
-            data: b"hematite".to_vec()
-        }.write(&mut stream));
+                 channel: "MC|Brand".to_string(),
+                 data: b"hematite".to_vec(),
+             }
+             .write(&mut stream));
         debug!("<< PluginMessage");
 
         // WRITE supported channels
         try!(PluginMessage {
-            channel: "REGISTER".to_string(),
-            data: b"MC|Brand\0".to_vec()
-        }.write(&mut stream));
+                 channel: "REGISTER".to_string(),
+                 data: b"MC|Brand\0".to_vec(),
+             }
+             .write(&mut stream));
         debug!("<< PluginMessage");
 
         // FIXME(toqueteos): We need a chunk loader handling disk reads and
@@ -89,7 +94,11 @@ impl World {
         let mut data = vec![];
         for z in -1..2 {
             for x in -1..2 {
-                meta.push(ChunkMeta { x: x, z: z, mask: 0b000_0000_0000_1111 });
+                meta.push(ChunkMeta {
+                    x: x,
+                    z: z,
+                    mask: 0b000_0000_0000_1111,
+                });
                 data.push(ChunkColumn {
                     chunks: vec![
                         Chunk::new(1 << 4, 0xff),
@@ -97,15 +106,16 @@ impl World {
                         Chunk::new(3 << 4, 0xff),
                         Chunk::new(4 << 4, 0xff),
                     ],
-                    biomes: Some([1u8; 256])
+                    biomes: Some([1u8; 256]),
                 });
             }
         }
         try!(ChunkDataBulk {
-            sky_light_sent: true,
-            chunk_meta: meta,
-            chunk_data: data,
-        }.write(&mut stream));
+                 sky_light_sent: true,
+                 chunk_meta: meta,
+                 chunk_data: data,
+             }
+             .write(&mut stream));
         debug!("<< ChunkDataBulk");
 
         // Send Compass
@@ -114,21 +124,34 @@ impl World {
 
         // Send Time
         try!(TimeUpdate {
-            world_age: self.world_age(),
-            time_of_day: self.time_of_day()
-        }.write(&mut stream));
+                 world_age: self.world_age(),
+                 time_of_day: self.time_of_day(),
+             }
+             .write(&mut stream));
         debug!("<< TimeUpdate");
 
         // Send Weather
-        try!(ChangeGameState { reason: 1, value: 0.0 }.write(&mut stream));
+        try!(ChangeGameState {
+                 reason: 1,
+                 value: 0.0,
+             }
+             .write(&mut stream));
         debug!("<< ChangeGameState Weather");
 
         // Send RainDensity
-        try!(ChangeGameState { reason: 8, value: 0.0 }.write(&mut stream));
+        try!(ChangeGameState {
+                 reason: 8,
+                 value: 0.0,
+             }
+             .write(&mut stream));
         debug!("<< ChangeGameState RainDensity");
 
         // Send SkyDarkness
-        try!(ChangeGameState { reason: 9, value: 0.0 }.write(&mut stream));
+        try!(ChangeGameState {
+                 reason: 9,
+                 value: 0.0,
+             }
+             .write(&mut stream));
         debug!("<< ChangeGameState SkyDarkness");
 
         // // Send Inventory items
@@ -140,17 +163,21 @@ impl World {
         debug!("<< WindowItems (not sent)");
 
         try!(PlayerPositionAndLook {
-            position: [0.0, 64.0, 0.0],
-            yaw: 0.0,
-            pitch: 0.0,
-            flags: 0x1f
-        }.write(&mut stream));
+                 position: [0.0, 64.0, 0.0],
+                 yaw: 0.0,
+                 pitch: 0.0,
+                 flags: 0x1f,
+             }
+             .write(&mut stream));
         debug!("<< PlayerPositionAndLook");
 
         // Read Client Settings
         match try!(Packet::read(&mut stream)) {
             ClientSettings(cs) => debug!(">> ClientSettings {:?}", cs),
-            wrong_packet => panic!("Expecting play::serverbound::ClientSettings packet, got {:?}", wrong_packet)
+            wrong_packet => {
+                panic!("Expecting play::serverbound::ClientSettings packet, got {:?}",
+                       wrong_packet)
+            }
         }
 
         // let cm = ChatMessage { data: Chat::new("Server: Welcome to hematite server!"), position: 1 };
@@ -158,7 +185,9 @@ impl World {
         // debug!("<< ChatMessage data={:?} position={}", cm.data, cm.position);
 
         // Send first Keep Alive
-        try!(KeepAlive { keep_alive_id: rand::random() }.write(&mut stream));
+        let stream_clone = try!(stream.try_clone());
+        let _ = keep_alive_tx.send(stream_clone);
+        // try!(KeepAlive { keep_alive_id: rand::random() }.write(&mut stream));
         debug!("<< KeepAlive");
         try!(stream.flush());
 
@@ -345,91 +374,91 @@ impl World {
                             use packet::play::clientbound::Statistics;
 
                             let stats = vec![
-                            Stat { name: "achievement.openInventory".to_string(), value: 1 },
-                            Stat { name: "achievement.mineWood".to_string(), value: 0 },
-                            Stat { name: "achievement.buildWorkBench".to_string(), value: 0 },
-                            Stat { name: "achievement.buildPickaxe".to_string(), value: 0 },
-                            Stat { name: "achievement.buildFurnace".to_string(), value: 0 },
-                            Stat { name: "achievement.acquireIron".to_string(), value: 0 },
-                            Stat { name: "achievement.buildHoe".to_string(), value: 0 },
-                            Stat { name: "achievement.makeBread".to_string(), value: 0 },
-                            Stat { name: "achievement.bakeCake".to_string(), value: 0 },
-                            Stat { name: "achievement.buildBetterPickaxe".to_string(), value: 0 },
-                            Stat { name: "achievement.cookFish".to_string(), value: 0 },
-                            Stat { name: "achievement.onARail".to_string(), value: 0 },
-                            Stat { name: "achievement.buildSword".to_string(), value: 0 },
-                            Stat { name: "achievement.killEnemy".to_string(), value: 0 },
-                            Stat { name: "achievement.killCow".to_string(), value: 0 },
-                            Stat { name: "achievement.flyPig".to_string(), value: 0 },
-                            Stat { name: "achievement.snipeSkeleton".to_string(), value: 0 },
-                            Stat { name: "achievement.diamonds".to_string(), value: 0 },
-                            Stat { name: "achievement.diamondsToYou".to_string(), value: 0 },
-                            Stat { name: "achievement.portal".to_string(), value: 0 },
-                            Stat { name: "achievement.ghast".to_string(), value: 0 },
-                            Stat { name: "achievement.blazeRod".to_string(), value: 0 },
-                            Stat { name: "achievement.potion".to_string(), value: 0 },
-                            Stat { name: "achievement.theEnd".to_string(), value: 0 },
-                            Stat { name: "achievement.theEnd2".to_string(), value: 0 },
-                            Stat { name: "achievement.enchantments".to_string(), value: 0 },
-                            Stat { name: "achievement.overkill".to_string(), value: 0 },
-                            Stat { name: "achievement.bookcase".to_string(), value: 0 },
-                            Stat { name: "achievement.breedCow".to_string(), value: 0 },
-                            Stat { name: "achievement.spawnWither".to_string(), value: 0 },
-                            Stat { name: "achievement.killWither".to_string(), value: 0 },
-                            Stat { name: "achievement.fullBeacon".to_string(), value: 0 },
-                            Stat { name: "achievement.exploreAllBiomes".to_string(), value: 0 },
-                            Stat { name: "stat.leaveGame".to_string(), value: 0 },
-                            Stat { name: "stat.playOneMinute".to_string(), value: 0 },
-                            Stat { name: "stat.timeSinceDeath".to_string(), value: 0 },
-                            Stat { name: "stat.sneakTime".to_string(), value: 0 },
-                            Stat { name: "stat.walkOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.crouchOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.sprintOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.swimOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.fallOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.climbOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.flyOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.diveOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.minecartOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.boatOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.pigOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.horseOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.aviateOneCm".to_string(), value: 0 },
-                            Stat { name: "stat.jump".to_string(), value: 0 },
-                            Stat { name: "stat.damageDealt".to_string(), value: 0 },
-                            Stat { name: "stat.damageTaken".to_string(), value: 0 },
-                            Stat { name: "stat.deaths".to_string(), value: 0 },
-                            Stat { name: "stat.mobKills".to_string(), value: 0 },
-                            Stat { name: "stat.playerKills".to_string(), value: 0 },
-                            Stat { name: "stat.drop".to_string(), value: 0 },
-                            Stat { name: "stat.itemEnchanted".to_string(), value: 0 },
-                            Stat { name: "stat.animalsBred".to_string(), value: 0 },
-                            Stat { name: "stat.fishCaught".to_string(), value: 0 },
-                            Stat { name: "stat.junkFished".to_string(), value: 0 },
-                            Stat { name: "stat.treasureFished".to_string(), value: 0 },
-                            Stat { name: "stat.talkedToVillager".to_string(), value: 0 },
-                            Stat { name: "stat.tradedWithVillager".to_string(), value: 0 },
-                            Stat { name: "stat.cakeSlicesEaten".to_string(), value: 0 },
-                            Stat { name: "stat.cauldronFilled".to_string(), value: 0 },
-                            Stat { name: "stat.cauldronUsed".to_string(), value: 0 },
-                            Stat { name: "stat.armorCleaned".to_string(), value: 0 },
-                            Stat { name: "stat.bannerCleaned".to_string(), value: 0 },
-                            Stat { name: "stat.brewingstandInteraction".to_string(), value: 0 },
-                            Stat { name: "stat.beaconInteraction".to_string(), value: 0 },
-                            Stat { name: "stat.craftingTableInteraction".to_string(), value: 0 },
-                            Stat { name: "stat.furnaceInteraction".to_string(), value: 0 },
-                            Stat { name: "stat.dispenserInspected".to_string(), value: 0 },
-                            Stat { name: "stat.dropperInspected".to_string(), value: 0 },
-                            Stat { name: "stat.hopperInspected".to_string(), value: 0 },
-                            Stat { name: "stat.chestOpened".to_string(), value: 0 },
-                            Stat { name: "stat.trappedChestTriggered".to_string(), value: 0 },
-                            Stat { name: "stat.enderchestOpened".to_string(), value: 0 },
-                            Stat { name: "stat.noteblockPlayed".to_string(), value: 0 },
-                            Stat { name: "stat.noteblockTuned".to_string(), value: 0 },
-                            Stat { name: "stat.flowerPotted".to_string(), value: 0 },
-                            Stat { name: "stat.recordPlayed".to_string(), value: 0 },
-                            Stat { name: "stat.sleepInBed".to_string(), value: 0 },
-                        ];
+                                Stat { name: "achievement.openInventory".to_string(), value: 1 },
+                                Stat { name: "achievement.mineWood".to_string(), value: 0 },
+                                Stat { name: "achievement.buildWorkBench".to_string(), value: 0 },
+                                Stat { name: "achievement.buildPickaxe".to_string(), value: 0 },
+                                Stat { name: "achievement.buildFurnace".to_string(), value: 0 },
+                                Stat { name: "achievement.acquireIron".to_string(), value: 0 },
+                                Stat { name: "achievement.buildHoe".to_string(), value: 0 },
+                                Stat { name: "achievement.makeBread".to_string(), value: 0 },
+                                Stat { name: "achievement.bakeCake".to_string(), value: 0 },
+                                Stat { name: "achievement.buildBetterPickaxe".to_string(), value: 0 },
+                                Stat { name: "achievement.cookFish".to_string(), value: 0 },
+                                Stat { name: "achievement.onARail".to_string(), value: 0 },
+                                Stat { name: "achievement.buildSword".to_string(), value: 0 },
+                                Stat { name: "achievement.killEnemy".to_string(), value: 0 },
+                                Stat { name: "achievement.killCow".to_string(), value: 0 },
+                                Stat { name: "achievement.flyPig".to_string(), value: 0 },
+                                Stat { name: "achievement.snipeSkeleton".to_string(), value: 0 },
+                                Stat { name: "achievement.diamonds".to_string(), value: 0 },
+                                Stat { name: "achievement.diamondsToYou".to_string(), value: 0 },
+                                Stat { name: "achievement.portal".to_string(), value: 0 },
+                                Stat { name: "achievement.ghast".to_string(), value: 0 },
+                                Stat { name: "achievement.blazeRod".to_string(), value: 0 },
+                                Stat { name: "achievement.potion".to_string(), value: 0 },
+                                Stat { name: "achievement.theEnd".to_string(), value: 0 },
+                                Stat { name: "achievement.theEnd2".to_string(), value: 0 },
+                                Stat { name: "achievement.enchantments".to_string(), value: 0 },
+                                Stat { name: "achievement.overkill".to_string(), value: 0 },
+                                Stat { name: "achievement.bookcase".to_string(), value: 0 },
+                                Stat { name: "achievement.breedCow".to_string(), value: 0 },
+                                Stat { name: "achievement.spawnWither".to_string(), value: 0 },
+                                Stat { name: "achievement.killWither".to_string(), value: 0 },
+                                Stat { name: "achievement.fullBeacon".to_string(), value: 0 },
+                                Stat { name: "achievement.exploreAllBiomes".to_string(), value: 0 },
+                                Stat { name: "stat.leaveGame".to_string(), value: 0 },
+                                Stat { name: "stat.playOneMinute".to_string(), value: 0 },
+                                Stat { name: "stat.timeSinceDeath".to_string(), value: 0 },
+                                Stat { name: "stat.sneakTime".to_string(), value: 0 },
+                                Stat { name: "stat.walkOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.crouchOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.sprintOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.swimOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.fallOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.climbOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.flyOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.diveOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.minecartOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.boatOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.pigOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.horseOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.aviateOneCm".to_string(), value: 0 },
+                                Stat { name: "stat.jump".to_string(), value: 0 },
+                                Stat { name: "stat.damageDealt".to_string(), value: 0 },
+                                Stat { name: "stat.damageTaken".to_string(), value: 0 },
+                                Stat { name: "stat.deaths".to_string(), value: 0 },
+                                Stat { name: "stat.mobKills".to_string(), value: 0 },
+                                Stat { name: "stat.playerKills".to_string(), value: 0 },
+                                Stat { name: "stat.drop".to_string(), value: 0 },
+                                Stat { name: "stat.itemEnchanted".to_string(), value: 0 },
+                                Stat { name: "stat.animalsBred".to_string(), value: 0 },
+                                Stat { name: "stat.fishCaught".to_string(), value: 0 },
+                                Stat { name: "stat.junkFished".to_string(), value: 0 },
+                                Stat { name: "stat.treasureFished".to_string(), value: 0 },
+                                Stat { name: "stat.talkedToVillager".to_string(), value: 0 },
+                                Stat { name: "stat.tradedWithVillager".to_string(), value: 0 },
+                                Stat { name: "stat.cakeSlicesEaten".to_string(), value: 0 },
+                                Stat { name: "stat.cauldronFilled".to_string(), value: 0 },
+                                Stat { name: "stat.cauldronUsed".to_string(), value: 0 },
+                                Stat { name: "stat.armorCleaned".to_string(), value: 0 },
+                                Stat { name: "stat.bannerCleaned".to_string(), value: 0 },
+                                Stat { name: "stat.brewingstandInteraction".to_string(), value: 0 },
+                                Stat { name: "stat.beaconInteraction".to_string(), value: 0 },
+                                Stat { name: "stat.craftingTableInteraction".to_string(), value: 0 },
+                                Stat { name: "stat.furnaceInteraction".to_string(), value: 0 },
+                                Stat { name: "stat.dispenserInspected".to_string(), value: 0 },
+                                Stat { name: "stat.dropperInspected".to_string(), value: 0 },
+                                Stat { name: "stat.hopperInspected".to_string(), value: 0 },
+                                Stat { name: "stat.chestOpened".to_string(), value: 0 },
+                                Stat { name: "stat.trappedChestTriggered".to_string(), value: 0 },
+                                Stat { name: "stat.enderchestOpened".to_string(), value: 0 },
+                                Stat { name: "stat.noteblockPlayed".to_string(), value: 0 },
+                                Stat { name: "stat.noteblockTuned".to_string(), value: 0 },
+                                Stat { name: "stat.flowerPotted".to_string(), value: 0 },
+                                Stat { name: "stat.recordPlayed".to_string(), value: 0 },
+                                Stat { name: "stat.sleepInBed".to_string(), value: 0 },
+                            ];
                             let response = Statistics { stats: stats };
                             try!(response.write(&mut stream));
                         }

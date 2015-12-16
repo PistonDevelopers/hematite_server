@@ -47,13 +47,13 @@ pub trait PacketRead: Sized {
 #[derive(Debug)]
 pub enum Direction {
     Clientbound,
-    Serverbound
+    Serverbound,
 }
 
 #[derive(Debug)]
 pub enum NextState {
     Status,
-    Login
+    Login,
 }
 
 mod prelude {
@@ -64,7 +64,8 @@ mod prelude {
 
     pub use uuid::Uuid;
 
-    pub use packet::{BlockChangeRecord, ChunkMeta, Protocol, PacketRead, PacketWrite, Stat, NextState};
+    pub use packet::{BlockChangeRecord, ChunkMeta, Protocol, PacketRead, PacketWrite, Stat,
+                     NextState};
     pub use proto::slp;
     pub use types::{Arr, BlockPos, ChatJson, ChunkColumn, Slot, UuidString, Var};
     pub use types::consts::*;
@@ -216,17 +217,24 @@ impl_protocol!(f64, 8, write_f64, read_f64);
 impl Protocol for bool {
     type Clean = bool;
 
-    fn proto_len(_: &bool) -> usize { 1 }
+    fn proto_len(_: &bool) -> usize {
+        1
+    }
 
     fn proto_encode(value: &bool, mut dst: &mut Write) -> io::Result<()> {
-        try!(dst.write_u8(if *value { 1 } else { 0 }));
+        try!(dst.write_u8(if *value {
+            1
+        } else {
+            0
+        }));
         Ok(())
     }
 
     fn proto_decode(mut src: &mut Read) -> io::Result<bool> {
         let value = try!(src.read_u8());
         if value > 1 {
-            Err(io::Error::new(io::ErrorKind::InvalidInput, &format!("Invalid bool value, expecting 0 or 1, got {}", value)[..]))
+            Err(io::Error::new(io::ErrorKind::InvalidInput,
+                               &format!("Invalid bool value, expecting 0 or 1, got {}", value)[..]))
         } else {
             Ok(value == 1)
         }
@@ -240,7 +248,7 @@ impl<T: Protocol> Protocol for Option<T> {
     fn proto_len(value: &Option<T::Clean>) -> usize {
         match *value {
             Some(ref inner) => 1 + <T as Protocol>::proto_len(inner),
-            None => 1
+            None => 1,
         }
     }
 
@@ -272,12 +280,14 @@ impl<T: Protocol> Protocol for Option<T> {
 impl Protocol for NextState {
     type Clean = Self;
 
-    fn proto_len(_: &Self) -> usize { 1 }
+    fn proto_len(_: &Self) -> usize {
+        1
+    }
 
     fn proto_encode(value: &Self, dst: &mut Write) -> io::Result<()> {
         let i = match *value {
             NextState::Status => 1,
-            NextState::Login => 2
+            NextState::Login => 2,
         };
         <Var<i32> as Protocol>::proto_encode(&i, dst)
     }
@@ -286,7 +296,7 @@ impl Protocol for NextState {
         match try!(<Var<i32> as Protocol>::proto_decode(src)) {
             1 => Ok(NextState::Status),
             2 => Ok(NextState::Login),
-            _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid state"))
+            _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid state")),
         }
     }
 }
@@ -316,7 +326,8 @@ pub mod handshake {
     }
 }
 pub mod play {
-    pub mod clientbound { packets! {
+    pub mod clientbound {
+        packets! {
         0x00 => KeepAlive { keep_alive_id: Var<i32> }
         0x01 => JoinGame { entity_id: i32, gamemode: u8, dimension: Dimension, difficulty: u8, max_players: u8, level_type: String, reduced_debug_info: bool }
         0x02 => ChatMessage { data: ChatJson, position: i8 }
@@ -455,8 +466,10 @@ pub mod play {
         // 0x47 => PlayerListHeaderFooter { header: Chat, footer: Chat }
         0x48 => ResourcePackSend { url: String, hash: String }
         0x49 => UpdateEntityNbt { entity_id: Var<i32>, tag: nbt::Blob }
-    } }
-    pub mod serverbound { packets! {
+    }
+    }
+    pub mod serverbound {
+        packets! {
         0x00 => KeepAlive { keep_alive_id: Var<i32> }
         0x01 => ChatMessage { message: String }
         // 0x02 => UseEntity { target_eid: i32, use_type: EntityUseAction }
@@ -501,27 +514,36 @@ pub mod play {
         }
         0x18 => Spectate { target_player: Uuid }
         0x19 => ResourcePackStatus { hash: String, result: Var<i32> }
-    } }
+    }
+    }
 }
 pub mod status {
-    pub mod clientbound { packets! {
+    pub mod clientbound {
+        packets! {
         0x00 => StatusResponse { response: slp::Response }
         0x01 => Pong { time: i64 }
-    } }
-    pub mod serverbound { packets! {
+    }
+    }
+    pub mod serverbound {
+        packets! {
         0x00 => StatusRequest {}
         0x01 => Ping { time: i64 }
-    } }
+    }
+    }
 }
 pub mod login {
-    pub mod clientbound { packets! {
+    pub mod clientbound {
+        packets! {
         0x00 => Disconnect { reason: ChatJson }
         0x01 => EncryptionRequest { server_id: String, pubkey: Arr<Var<i32>, u8>, verify_token: Arr<Var<i32>, u8> }
         0x02 => LoginSuccess { uuid: UuidString, username: String }
         0x03 => SetCompression { threshold: Var<i32> }
-    } }
-    pub mod serverbound { packets! {
+    }
+    }
+    pub mod serverbound {
+        packets! {
         0x00 => LoginStart { name: String }
         0x01 => EncryptionResponse { shared_secret: Arr<Var<i32>, u8>, verify_token: Arr<Var<i32>, u8> }
-    } }
+    }
+    }
 }
