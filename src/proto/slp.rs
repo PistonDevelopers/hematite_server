@@ -10,6 +10,7 @@ use std::net::TcpStream;
 use std::ops::Sub; // Sub for Timespec
 use std::path::Path;
 
+use consts;
 use packet::{PacketRead, PacketWrite, Protocol};
 
 use rustc_serialize::base64::{ToBase64, STANDARD};
@@ -88,8 +89,8 @@ pub fn response(mut stream: &mut TcpStream) -> io::Result<()> {
             // other values are static.
             let resp = Response{
                 version: Version{
-                    name: "1.8.3".to_string(),
-                    protocol: 47,
+                    name: consts::VERSION.to_string(),
+                    protocol: consts::PROTO_VERSION,
                 },
                 players: Players{
                     // FIXME(toqueteos): This is value should be a internal counter of server
@@ -181,7 +182,7 @@ mod tests {
     fn client_server_list_ping() {
         let mut stream = TcpStream::connect("127.0.0.1:25565").unwrap();
         Handshake {
-            proto_version: 47,
+            proto_version: consts::PROTO_VERSION,
             server_address: "127.0.0.1".to_string(),
             server_port: 25565,
             next_state: NextState::Status
@@ -200,7 +201,7 @@ mod tests {
         let elapsed = ping(&mut stream).unwrap();
         println!("ping {}", elapsed);
         Handshake {
-            proto_version: 47,
+            proto_version: consts::PROTO_VERSION,
             server_address: "127.0.0.1".to_string(),
             server_port: 25565,
             next_state: NextState::Status
