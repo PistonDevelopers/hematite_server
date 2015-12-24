@@ -5,6 +5,7 @@ extern crate log;
 use std::net::TcpListener;
 use std::sync::Arc;
 use std::thread;
+use std::sync::mpsc;
 
 use hem::vanilla::Server;
 
@@ -31,7 +32,7 @@ fn init_logger() -> Result<(), SetLoggerError> {
     })
 }
 
-fn main () {
+fn main() {
     init_logger().expect("failed to initialize logger");
 
     info!("hematite server");
@@ -41,19 +42,24 @@ fn main () {
     let listener = TcpListener::bind(&(server.addr(), server.port())).expect("failed tcp bind");
     // NOTE(toqueteos): As soon as we need &mut server reference this won't work
     let server_ref = Arc::new(server);
-    // Accept connections and process them, spawning a new tasks for each one
+
+    let (keep_alive_tx, keep_alive_rx) = mpsc::channel();
+    thread::spawn(move || Server::keep_alive_loop(keep_alive_rx));
+
+    // Accept connections and process them, spawning a new thread for each one
     for conn in listener.incoming() {
         match conn {
             Ok(conn) => {
                 let srv = server_ref.clone();
-                thread::spawn(move|| {
-                    match srv.handle(conn) {
+                let keep_alive_tx = keep_alive_tx.clone();
+                thread::spawn(move || {
+                    match srv.handle(conn, keep_alive_tx) {
                         Ok(_) => {}
-                        Err(err) => info!("{}", err)
+                        Err(err) => info!("{}", err),
                     }
                 });
             }
-            Err(e) => info!("Connection error {:?}", e)
+            Err(err) => info!("Connection error {:?}", err),
         }
     }
 }
