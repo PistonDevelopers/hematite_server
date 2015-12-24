@@ -15,6 +15,7 @@ extern crate rustc_serialize;
 extern crate time;
 extern crate uuid;
 
+pub mod consts;
 pub mod packet;
 pub mod proto;
 pub mod types;
