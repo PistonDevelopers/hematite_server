@@ -2,8 +2,7 @@
 //!
 //! This module is a WORK IN PROGRESS.
 
-use std::io::{self, Write};
-use std::net::TcpStream;
+use std::io::{self, Read, Write};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -68,7 +67,7 @@ impl World {
     }
 
     #[allow(unreachable_code)]
-    pub fn handle_player(&self, mut stream: TcpStream) -> io::Result<()> {
+    pub fn handle_player<S: Read + Write>(&self, mut stream: S) -> io::Result<()> {
         use packet::play::serverbound::Packet;
         use packet::play::serverbound::Packet::ClientSettings;
         use packet::play::clientbound::{ChangeGameState, ChunkDataBulk, JoinGame, KeepAlive};

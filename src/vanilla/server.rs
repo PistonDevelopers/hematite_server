@@ -5,6 +5,8 @@ use std::io::{self, Write};
 use std::net::TcpStream;
 use std::path::Path;
 
+use crypto::SymmStream;
+use openssl::crypto::pkey::PKey;
 use packet::{NextState, PacketRead, PacketWrite};
 use proto::properties::Properties;
 use proto::slp;
@@ -18,11 +20,15 @@ pub struct Server {
     props: Properties,
     // Dummy player storage, just their username.
     // players: Vec<String>,
-    worlds: Vec<World>
+    worlds: Vec<World>,
+    public_key: PKey,
+    private_key: PKey,
 }
 
 impl Server {
     pub fn new() -> io::Result<Server> {
+        use openssl::x509::X509Generator;
+
         let properties_path = &Path::new("server.properties");
         let props = match fs::metadata(properties_path) {
         // let props = match properties_path.metadata() {
@@ -38,11 +44,16 @@ impl Server {
         } else {
             props.server_ip.clone()
         };
+
+        let (cert, key) = X509Generator::new().generate().unwrap(); // TODO(brt): Map to appropriate ErrorKind if any
+
         Ok(Server {
             addr: addr,
             props: props,
             // players: vec![],
-            worlds: vec![World::new()]
+            worlds: vec![World::new()],
+            public_key: cert.public_key(),
+            private_key: key,
         })
     }
 
@@ -65,9 +76,11 @@ impl Server {
                 try!(slp::pong(&mut stream));
             }
             NextState::Login => {
+                use openssl::crypto::pkey::EncryptionPadding;
+
                 use packet::login::serverbound::Packet;
                 use packet::login::serverbound::Packet::{LoginStart, EncryptionResponse};
-                use packet::login::clientbound::{LoginSuccess, SetCompression};
+                use packet::login::clientbound::{EncryptionRequest, LoginSuccess, SetCompression};
 
                 let name = match try!(Packet::read(&mut stream)) {
                     LoginStart(login) => login.name,
@@ -77,6 +90,29 @@ impl Server {
                     }
                 };
                 debug!(">> LoginStart name={}", name);
+
+                try!(EncryptionRequest {
+                    server_id: "".to_string(),
+                    pubkey: self.public_key.save_pub(),
+                    verify_token: "whatever".as_bytes().into(), // FIXME(brt): Should be randomly generated
+                }.write(&mut stream));
+                debug!("<< EncryptionRequest");
+
+                let res = match try!(Packet::read(&mut stream)) {
+                    EncryptionResponse(res) => res,
+                    _ => {
+                        return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                                  "Expecting login::serverbound::EncryptionResponse"));
+                    },
+                };
+                debug!(">> EncryptionResponse");
+
+                // TODO(brt): Either verify or terminate the connection using login::clientbound::Disconnect
+
+                let shared_secret = self.private_key.decrypt_with_padding(&res.shared_secret[..],
+                                                                          EncryptionPadding::PKCS1v15);
+
+                let mut stream = SymmStream::new(stream, &shared_secret[..]);
 
                 // NOTE: threshold of `-1` disables compression
                 let threshold = -1;
