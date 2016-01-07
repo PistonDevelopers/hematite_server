@@ -9,6 +9,7 @@ extern crate flate2;
 extern crate log;
 extern crate nbt;
 extern crate num;
+extern crate openssl;
 extern crate rand;
 extern crate regex;
 extern crate rustc_serialize;
@@ -16,6 +17,7 @@ extern crate time;
 extern crate uuid;
 
 pub mod consts;
+pub mod crypto;
 pub mod packet;
 pub mod proto;
 pub mod types;
