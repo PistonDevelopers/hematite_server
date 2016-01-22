@@ -224,7 +224,7 @@ impl World {
             let len = try!(<Var<i32> as Protocol>::proto_decode(&mut stream));
             let id = try!(<Var<i32> as Protocol>::proto_decode(&mut stream));
             let n_read = len - 1;
-            let mut buf = vec![0; n_read as usize];
+            let mut buf = vec![0u8; n_read as usize];
             try!(stream.read_exact(&mut buf));
             // We could add a filter here, chat messages might be info!, position packets are debug!, etc...
             debug!("id={} length={} buf={:?} t2-t={}", PACKET_NAMES[id as usize], len, buf, t);
