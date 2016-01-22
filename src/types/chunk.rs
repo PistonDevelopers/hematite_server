@@ -5,7 +5,6 @@ use std::io::prelude::*;
 use std::io::{self, Cursor};
 
 use packet::Protocol;
-use util::ReadExactly;
 
 /// ChunkColumn is a set of 0-16 chunks, up to 16x256x16 blocks.
 pub struct ChunkColumn {
@@ -82,13 +81,9 @@ impl ChunkColumn {
             }
         }
         if continuous {
-            let biomes = try!(src.read_exactly(256));
-            // Vec<u8> -> [u8; 256]
-            let mut bs = [0u8; 256];
-            for (idx, elt) in biomes.into_iter().enumerate() {
-                bs[idx] = elt;
-            }
-            column.biomes = Some(bs)
+            let mut biomes = [0u8; 256];
+            try!(src.read_exact(&mut biomes));
+            column.biomes = Some(biomes)
         }
         Ok(column)
     }
