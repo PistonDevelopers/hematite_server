@@ -1,26 +1,5 @@
-use std::io;
-use std::io::prelude::*;
 use std::iter::IntoIterator;
 use std::ops;
-
-pub trait ReadExactly: Read {
-    /// Returns a `Vec<u8>` containing the next `len` bytes in the reader.
-    ///
-    /// Adapted from `byteorder::read_full`.
-    fn read_exactly(&mut self, len: usize) -> io::Result<Vec<u8>> {
-        let mut buf = vec![0; len];
-        let mut n_read = 0usize;
-        while n_read < buf.len() {
-            match try!(self.read(&mut buf[n_read..])) {
-                0 => { return Err(io::Error::new(io::ErrorKind::InvalidInput, "unexpected EOF")); }
-                n => n_read += n
-            }
-        }
-        Ok(buf)
-    }
-}
-
-impl<R: Read> ReadExactly for R {}
 
 pub trait Join<T> {
     fn join(self, T) -> String;

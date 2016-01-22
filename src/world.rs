@@ -2,7 +2,7 @@
 //!
 //! This module is a WORK IN PROGRESS.
 
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::thread::sleep;
 use std::time::Duration;
@@ -10,7 +10,6 @@ use std::time::Duration;
 use packet::{ChunkMeta, PacketRead, PacketWrite, Protocol};
 use types::consts::*;
 use types::{Chunk, ChunkColumn, Var};
-use util::ReadExactly;
 
 use rand;
 use time;
@@ -225,7 +224,8 @@ impl World {
             let len = try!(<Var<i32> as Protocol>::proto_decode(&mut stream));
             let id = try!(<Var<i32> as Protocol>::proto_decode(&mut stream));
             let n_read = len - 1;
-            let buf = try!(stream.read_exactly(n_read as usize));
+            let mut buf = vec![0; n_read as usize];
+            try!(stream.read_exact(&mut buf));
             // We could add a filter here, chat messages might be info!, position packets are debug!, etc...
             debug!("id={} length={} buf={:?} t2-t={}", PACKET_NAMES[id as usize], len, buf, t);
 
