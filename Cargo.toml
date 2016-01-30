@@ -23,12 +23,9 @@ flate2 = "0.2"
 hematite-nbt = "0.1"
 log = "0.3"
 num = "0.1"
+openssl = "0.7.5"
 rand = "0.3"
 regex = "0.1"
 rustc-serialize = "0.3"
 time = "0.1"
 uuid = "0.1"
-
-[dependencies.openssl]
-git = "https://github.com/sfackler/rust-openssl.git"
-rev = "83ef18922f2534c6c57e72a34233a3a3d4ae3aa3"
