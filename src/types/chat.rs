@@ -1,5 +1,4 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::error::Error;
 use std::io;
 use std::str::FromStr;
 
@@ -315,7 +314,7 @@ impl ToJson for ChatJson {
         if let Some(ref ins) = self.insertion {
             d.insert("insertion".to_string(), ins.to_json());
         }
-        
+
         Json::Object(d)
     }
 }
