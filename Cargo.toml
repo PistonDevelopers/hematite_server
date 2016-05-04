@@ -5,6 +5,11 @@ authors = [
     "Fenhl <fenhl@fenhl.net>",
     "Carlos Cobo <toqueteos@gmail.com>"
 ]
+license = "MIT"
+keywords = ["hematite", "minecraft", "server", "piston"]
+description = "A Minecraft server clone"
+repository = "https://github.com/PistonDevelopers/hematite_server"
+homepage = "http://hematite.piston.rs/"
 
 [[bin]]
 name = "hematite_server"
