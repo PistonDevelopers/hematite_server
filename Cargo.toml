@@ -1,6 +1,6 @@
 [package]
 name = "hematite_server"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
     "Fenhl <fenhl@fenhl.net>",
     "Carlos Cobo <toqueteos@gmail.com>"
@@ -18,9 +18,9 @@ name = "hematite_server"
 path = "src/lib.rs"
 
 [dependencies]
-byteorder = "0.4"
+byteorder = "0.5.1"
 flate2 = "0.2"
-hematite-nbt = "0.1"
+hematite-nbt = "0.2"
 log = "0.3"
 num = "0.1"
 rand = "0.3"

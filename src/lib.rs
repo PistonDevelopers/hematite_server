@@ -7,7 +7,7 @@ extern crate byteorder;
 extern crate flate2;
 #[macro_use]
 extern crate log;
-extern crate nbt;
+pub extern crate nbt;
 extern crate num;
 extern crate rand;
 extern crate regex;
