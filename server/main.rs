@@ -8,27 +8,30 @@ use std::thread;
 
 use hem::vanilla::Server;
 
-use log::{LogLevel, LogLevelFilter, LogMetadata, LogRecord, SetLoggerError};
+use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
+
+static SIMPLE_LOGGER: SimpleLogger = SimpleLogger;
 
 struct SimpleLogger;
 
 impl log::Log for SimpleLogger {
-    fn enabled(&self, metadata: &LogMetadata) -> bool {
-        metadata.level() <= LogLevel::Info
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Info
     }
 
-    fn log(&self, record: &LogRecord) {
+    fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             println!("{} - {}", record.level(), record.args());
         }
     }
+
+    fn flush(&self) {}
 }
 
 fn init_logger() -> Result<(), SetLoggerError> {
-    log::set_logger(|max_log_level| {
-        max_log_level.set(LogLevelFilter::Info);
-        Box::new(SimpleLogger)
-    })
+    log::set_logger(&SIMPLE_LOGGER)?;
+    log::set_max_level(LevelFilter::Info);
+    Ok(())
 }
 
 fn main () {

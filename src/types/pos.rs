@@ -22,7 +22,7 @@ impl Protocol for BlockPos {
 
     fn proto_len(_: &[i32; 3]) -> usize { 8 }
 
-    fn proto_encode(value: &[i32; 3], mut dst: &mut Write) -> io::Result<()> {
+    fn proto_encode(value: &[i32; 3], dst: &mut Write) -> io::Result<()> {
         let x = value[0].clone();
         let y = value[1].clone();
         let z = value[2].clone();
@@ -33,7 +33,7 @@ impl Protocol for BlockPos {
         Ok(())
     }
 
-    fn proto_decode(mut src: &mut Read) -> io::Result<[i32; 3]> {
+    fn proto_decode(src: &mut Read) -> io::Result<[i32; 3]> {
         let block_pos = try!(src.read_u64::<BigEndian>());
         let x = (block_pos >> 38) as i32;
         let y = (block_pos >> 26 & 0xfff) as i32;
