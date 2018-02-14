@@ -26,7 +26,7 @@ impl Protocol for Var<i32> {
     }
 
     /// Writes `value` as a VarInt into `dst`, it can be up to 5 bytes.
-    fn proto_encode(value: &i32, mut dst: &mut Write) -> io::Result<()> {
+    fn proto_encode(value: &i32, dst: &mut Write) -> io::Result<()> {
         let mut temp = *value as u32;
         loop {
             if (temp & !0x7fu32) == 0 {
@@ -40,7 +40,7 @@ impl Protocol for Var<i32> {
     }
 
     /// Reads up to 5 bytes from `src`, until a valid `Var<i32>` is found.
-    fn proto_decode(mut src: &mut Read) -> io::Result<i32> {
+    fn proto_decode(src: &mut Read) -> io::Result<i32> {
         let mut x = 0i32;
 
         for shift in [0u32, 7, 14, 21, 28].into_iter() { // (0..32).step_by(7)
@@ -71,7 +71,7 @@ impl Protocol for Var<i64> {
     }
 
     /// Writes `value` as a VarLong into `dst`, it can be up to 10 bytes.
-    fn proto_encode(value: &i64, mut dst: &mut Write) -> io::Result<()> {
+    fn proto_encode(value: &i64, dst: &mut Write) -> io::Result<()> {
         let mut temp = *value as u64;
         loop {
             if (temp & !0x7fu64) == 0 {
@@ -85,7 +85,7 @@ impl Protocol for Var<i64> {
     }
 
     /// Reads up to 10 bytes from `src`, until a valid `Var<i64>` is found.
-    fn proto_decode(mut src: &mut Read) -> io::Result<i64> {
+    fn proto_decode(src: &mut Read) -> io::Result<i64> {
         let mut x = 0i64;
 
         for shift in [0u32, 7, 14, 21, 28, 35, 42, 49, 56, 63].into_iter() {

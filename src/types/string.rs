@@ -23,7 +23,7 @@ impl Protocol for String {
         Ok(())
     }
 
-    fn proto_decode(mut src: &mut Read) -> io::Result<String> {
+    fn proto_decode(src: &mut Read) -> io::Result<String> {
         let len: i32 = try!(<Var<i32> as Protocol>::proto_decode(src));
         let mut s = vec![0u8; len as usize];
         try!(src.read_exact(&mut s));

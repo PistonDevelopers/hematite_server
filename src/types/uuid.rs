@@ -18,7 +18,7 @@ impl Protocol for Uuid {
         dst.write_all(value.as_bytes())
     }
     /// Reads 16 bytes from `src` and returns a `Uuid`
-    fn proto_decode(mut src: &mut Read) -> io::Result<Uuid> {
+    fn proto_decode(src: &mut Read) -> io::Result<Uuid> {
         let mut v = [0u8; 16];
         try!(src.read_exact(&mut v));
         Uuid::from_bytes(&v).ok_or(io::Error::new(io::ErrorKind::InvalidInput, &format!("Invalid UUID value: {:?} can't be used to create UUID", v)[..]))

@@ -72,7 +72,7 @@ impl Protocol for Response {
 // something more useful. We need the Handshake's `next_state` field in order
 // to perform login for a player.
 /// Server-side Server List response
-pub fn response(mut stream: &mut TcpStream) -> io::Result<()> {
+pub fn response(stream: &mut TcpStream) -> io::Result<()> {
     use packet::status::serverbound::Packet::{self, StatusRequest};
     use packet::status::clientbound::StatusResponse;
 
@@ -110,7 +110,7 @@ pub fn response(mut stream: &mut TcpStream) -> io::Result<()> {
 }
 
 /// Server-side pong response, optional
-pub fn pong(mut stream: &mut TcpStream) -> io::Result<()> {
+pub fn pong(stream: &mut TcpStream) -> io::Result<()> {
     use packet::status::clientbound::Pong;
     use packet::status::serverbound::Packet::{self, Ping};
 
@@ -126,7 +126,7 @@ pub fn pong(mut stream: &mut TcpStream) -> io::Result<()> {
 }
 
 /// Client-side Server List request
-pub fn request(mut stream: &mut TcpStream) -> io::Result<Response> {
+pub fn request(stream: &mut TcpStream) -> io::Result<Response> {
     use packet::status::serverbound::StatusRequest;
     use packet::status::clientbound::Packet::{self, StatusResponse};
 
@@ -141,7 +141,7 @@ pub fn request(mut stream: &mut TcpStream) -> io::Result<Response> {
 }
 
 /// Client-side ping request, optional
-pub fn ping(mut stream: &mut TcpStream) -> io::Result<i64> {
+pub fn ping(stream: &mut TcpStream) -> io::Result<i64> {
     use packet::status::clientbound::Packet::{self, Pong};
     use packet::status::serverbound::Ping;
 
