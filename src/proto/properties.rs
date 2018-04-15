@@ -71,7 +71,7 @@ macro_rules! server_properties_impl {
                 // only writes the 3 left if they are not using default values. It
                 // also writes them unsorted (possibly because they are stored in a
                 // HashMap).
-                $(try!(write!(&mut file, "{}={}", $hyphen, self.$field));)*
+                $(try!(write!(&mut file, "{}={}\n", $hyphen, self.$field));)*
                 Ok(())
             }
         }
