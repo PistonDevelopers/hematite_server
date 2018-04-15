@@ -12,7 +12,7 @@ pub struct Slot {
     id: u16,
     count: u8,
     damage: i16,
-    tag: nbt::Blob
+    tag: nbt::Blob,
 }
 
 impl Protocol for Option<Slot> {
@@ -21,19 +21,24 @@ impl Protocol for Option<Slot> {
     fn proto_len(value: &Option<Slot>) -> usize {
         match *value {
             Some(ref slot) => 2 + 1 + 2 + <nbt::Blob as Protocol>::proto_len(&slot.tag), // id, count, damage, tag
-            None => 2
+            None => 2,
         }
     }
 
     fn proto_encode(value: &Option<Slot>, dst: &mut Write) -> io::Result<()> {
         match *value {
-            Some(Slot { id, count, damage, ref tag }) => {
+            Some(Slot {
+                id,
+                count,
+                damage,
+                ref tag,
+            }) => {
                 try!(<i16 as Protocol>::proto_encode(&(id as i16), dst));
                 try!(<u8 as Protocol>::proto_encode(&count, dst));
                 try!(<i16 as Protocol>::proto_encode(&damage, dst));
                 try!(<nbt::Blob as Protocol>::proto_encode(tag, dst));
             }
-            None => { try!(<i16 as Protocol>::proto_encode(&-1, dst)) }
+            None => try!(<i16 as Protocol>::proto_encode(&-1, dst)),
         }
         Ok(())
     }
@@ -47,7 +52,7 @@ impl Protocol for Option<Slot> {
                 id: id as u16,
                 count: try!(<u8 as Protocol>::proto_decode(src)),
                 damage: try!(<i16 as Protocol>::proto_decode(src)),
-                tag: try!(<nbt::Blob as Protocol>::proto_decode(src))
+                tag: try!(<nbt::Blob as Protocol>::proto_decode(src)),
             })
         })
     }

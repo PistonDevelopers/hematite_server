@@ -11,12 +11,12 @@ use regex::Regex;
 pub enum Attr<T> {
     Is(T),
     Not(T),
-    Unspecified
+    Unspecified,
 }
 
 impl<T: From<String>> From<String> for Attr<T> {
     fn from(s: String) -> Attr<T> {
-        if s.len() == 0 {
+        if s.is_empty() {
             Attr::Unspecified
         } else if &s[..1] == "!" {
             Attr::Not(T::from(s[1..].to_string()))
@@ -28,7 +28,7 @@ impl<T: From<String>> From<String> for Attr<T> {
 
 impl<'a, T: From<String>> From<&'a str> for Attr<T> {
     fn from(s: &str) -> Attr<T> {
-        if s.len() == 0 {
+        if s.is_empty() {
             Attr::Unspecified
         } else if &s[..1] == "!" {
             Attr::Not(T::from(s[1..].to_string()))
@@ -46,7 +46,7 @@ pub enum Error {
     MalformedInt(ParseIntError),
     MalformedSelector,
     PositionalAfterNamed,
-    TooManyPositionalArgs
+    TooManyPositionalArgs,
 }
 
 impl From<ParseFloatError> for Error {
@@ -76,7 +76,7 @@ pub struct EntitySelector {
     name: Attr<String>,
     pitch: Range<f32>,
     yaw: Range<f32>,
-    entity_type: Attr<String>
+    entity_type: Attr<String>,
 }
 
 impl EntitySelector {
@@ -124,7 +124,7 @@ impl Default for EntitySelector {
             name: Attr::Unspecified,
             pitch: Range::from(..),
             yaw: Range::from(..),
-            entity_type: Attr::Unspecified
+            entity_type: Attr::Unspecified,
         }
     }
 }
@@ -139,7 +139,7 @@ impl FromStr for EntitySelector {
                 "e" => EntitySelector::default(),
                 "p" => EntitySelector::player(),
                 "r" => EntitySelector::random(),
-                sigil => return Err(Error::InvalidSigil(sigil.to_string()))
+                sigil => return Err(Error::InvalidSigil(sigil.to_string())),
             };
             if let Some(args) = captures.at(3) {
                 let mut positional_seen = 0u8; // number of positional arguments (x, y, z, r) encountered
@@ -150,32 +150,72 @@ impl FromStr for EntitySelector {
                         let key = captures.at(1).unwrap();
                         let value = captures.at(2).unwrap();
                         match key {
-                            "x" => { result.position[0] = Some(try!(i32::from_str(value))); }
-                            "y" => { result.position[1] = Some(try!(i32::from_str(value))); }
-                            "z" => { result.position[2] = Some(try!(i32::from_str(value))); }
-                            "dx" => { result.delta_pos[0] = Some(try!(i32::from_str(value))); }
-                            "dy" => { result.delta_pos[1] = Some(try!(i32::from_str(value))); }
-                            "dz" => { result.delta_pos[2] = Some(try!(i32::from_str(value))); }
-                            "r" => { result.radius.end = Some(try!(i32::from_str(value))); }
-                            "rm" => { result.radius.start = Some(try!(i32::from_str(value))); }
-                            "m" => { result.gamemode = Some(try!(u8::from_str(value))); }
-                            "c" => { result.count = try!(i32::from_str(value)); }
-                            "l" => { result.xp_level.end = Some(try!(i32::from_str(value))); }
-                            "lm" => { result.xp_level.start = Some(try!(i32::from_str(value))); }
-                            "team" => { result.team = Attr::from(value) }
-                            "name" => { result.name = Attr::from(value) }
-                            "rx" => { result.pitch.end = Some(try!(f32::from_str(value))); }
-                            "rxm" => { result.pitch.start = Some(try!(f32::from_str(value))); }
-                            "ry" => { result.yaw.end = Some(try!(f32::from_str(value))); }
-                            "rym" => { result.yaw.start = Some(try!(f32::from_str(value))); }
-                            "type" => { result.entity_type = Attr::from(value) }
+                            "x" => {
+                                result.position[0] = Some(try!(i32::from_str(value)));
+                            }
+                            "y" => {
+                                result.position[1] = Some(try!(i32::from_str(value)));
+                            }
+                            "z" => {
+                                result.position[2] = Some(try!(i32::from_str(value)));
+                            }
+                            "dx" => {
+                                result.delta_pos[0] = Some(try!(i32::from_str(value)));
+                            }
+                            "dy" => {
+                                result.delta_pos[1] = Some(try!(i32::from_str(value)));
+                            }
+                            "dz" => {
+                                result.delta_pos[2] = Some(try!(i32::from_str(value)));
+                            }
+                            "r" => {
+                                result.radius.end = Some(try!(i32::from_str(value)));
+                            }
+                            "rm" => {
+                                result.radius.start = Some(try!(i32::from_str(value)));
+                            }
+                            "m" => {
+                                result.gamemode = Some(try!(u8::from_str(value)));
+                            }
+                            "c" => {
+                                result.count = try!(i32::from_str(value));
+                            }
+                            "l" => {
+                                result.xp_level.end = Some(try!(i32::from_str(value)));
+                            }
+                            "lm" => {
+                                result.xp_level.start = Some(try!(i32::from_str(value)));
+                            }
+                            "team" => result.team = Attr::from(value),
+                            "name" => result.name = Attr::from(value),
+                            "rx" => {
+                                result.pitch.end = Some(try!(f32::from_str(value)));
+                            }
+                            "rxm" => {
+                                result.pitch.start = Some(try!(f32::from_str(value)));
+                            }
+                            "ry" => {
+                                result.yaw.end = Some(try!(f32::from_str(value)));
+                            }
+                            "rym" => {
+                                result.yaw.start = Some(try!(f32::from_str(value)));
+                            }
+                            "type" => result.entity_type = Attr::from(value),
                             k => {
                                 if let Some(captures) = Regex::new("score_([A-Za-z]+)").unwrap().captures(k) {
                                     let objective = captures.at(1).unwrap();
-                                    result.scores.entry(objective.to_string()).or_insert(Range::from(..)).end = Some(try!(i32::from_str(value)));
+                                    result
+                                        .scores
+                                        .entry(objective.to_string())
+                                        .or_insert_with(|| Range::from(..))
+                                        .end = Some(try!(i32::from_str(value)));
                                 } else if let Some(captures) = Regex::new("score_([A-Za-z]+)_min").unwrap().captures(k) {
                                     let objective = captures.at(1).unwrap();
-                                    result.scores.entry(objective.to_string()).or_insert(Range::from(..)).start = Some(try!(i32::from_str(value)));
+                                    result
+                                        .scores
+                                        .entry(objective.to_string())
+                                        .or_insert_with(|| Range::from(..))
+                                        .start = Some(try!(i32::from_str(value)));
                                 } else {
                                     return Err(Error::InvalidArgName(k.to_string()));
                                 }
@@ -191,11 +231,19 @@ impl FromStr for EntitySelector {
                             // empty, keep default
                         } else {
                             match positional_seen {
-                                0 => { result.position[0] = Some(try!(i32::from_str(arg))); }
-                                1 => { result.position[1] = Some(try!(i32::from_str(arg))); }
-                                2 => { result.position[2] = Some(try!(i32::from_str(arg))); }
-                                3 => { result.radius = Range::from(..try!(i32::from_str(arg))); }
-                                _ => return Err(Error::TooManyPositionalArgs)
+                                0 => {
+                                    result.position[0] = Some(try!(i32::from_str(arg)));
+                                }
+                                1 => {
+                                    result.position[1] = Some(try!(i32::from_str(arg)));
+                                }
+                                2 => {
+                                    result.position[2] = Some(try!(i32::from_str(arg)));
+                                }
+                                3 => {
+                                    result.radius = Range::from(..try!(i32::from_str(arg)));
+                                }
+                                _ => return Err(Error::TooManyPositionalArgs),
                             }
                         }
                         positional_seen += 1;
@@ -295,7 +343,15 @@ impl<'a> From<&'a EntitySelector> for String {
                 args.push(format!("c={}", sel.count));
             }
         }
-        format!("@{}{}", sigil, if args.len() > 0 { format!("[{}]", args.join(',')) } else { "".to_string() })
+        format!(
+            "@{}{}",
+            sigil,
+            if !args.is_empty() {
+                format!("[{}]", args.join(','))
+            } else {
+                "".to_string()
+            }
+        )
     }
 }
 
@@ -310,7 +366,7 @@ mod test {
     // Table driven tests
     struct TestCase<'a> {
         selector: EntitySelector,
-        string: &'a str
+        string: &'a str,
     }
 
     #[test]
@@ -324,8 +380,8 @@ mod test {
                     entity_type: Attr::Is("Creeper".to_string()),
                     count: -4,
                     ..EntitySelector::default()
-                }
-            }
+                },
+            },
         ];
         for TestCase { string, selector } in test_cases {
             assert_eq!(EntitySelector::from_str(string).unwrap(), selector);
@@ -335,7 +391,10 @@ mod test {
     #[test]
     fn basic_selectors() {
         for sel in vec!["@a", "@e", "@p", "@r"] {
-            assert_eq!(sel.to_string(), String::from(&EntitySelector::from_str(sel).unwrap()));
+            assert_eq!(
+                sel.to_string(),
+                String::from(&EntitySelector::from_str(sel).unwrap())
+            );
         }
     }
 }

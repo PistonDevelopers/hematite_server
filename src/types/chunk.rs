@@ -9,17 +9,20 @@ use packet::Protocol;
 /// ChunkColumn is a set of 0-16 chunks, up to 16x256x16 blocks.
 pub struct ChunkColumn {
     pub chunks: Vec<Chunk>,
-    pub biomes: Option<[u8; 256]>
+    pub biomes: Option<[u8; 256]>,
 }
 
 impl ChunkColumn {
     pub fn len(&self) -> usize {
-        let chunks = self.chunks.iter().map(|x| x.len()).fold(0, |acc, item| acc + item);
+        let chunks: usize = self.chunks.iter().map(|x| x.len()).sum();
         let biomes = match self.biomes {
             Some(_) => 256,
-            None => 0
+            None => 0,
         };
         chunks + biomes
+    }
+    pub fn is_empty(&self) -> bool {
+        (&self).len() == 0
     }
     pub fn encode(&self) -> io::Result<Vec<u8>> {
         use byteorder::{LittleEndian, WriteBytesExt};
@@ -34,14 +37,12 @@ impl ChunkColumn {
             try!(dst.write_all(&chunk.block_light));
         }
         for chunk in &self.chunks {
-            match chunk.sky_light {
-                Some(xs) => try!(dst.write_all(&xs)),
-                None => {}
+            if let Some(xs) = chunk.sky_light {
+                try!(dst.write_all(&xs));
             }
         }
-        match self.biomes {
-            Some(xs) => try!(dst.write_all(&xs)),
-            None => {}
+        if let Some(xs) = self.biomes {
+            try!(dst.write_all(&xs));
         }
         Ok(dst.into_inner())
     }
@@ -52,9 +53,9 @@ impl ChunkColumn {
         for _ in 0..num_chunks {
             chunks.push(Chunk::default());
         }
-        let mut column = ChunkColumn{
-            chunks: chunks,
-            biomes: None
+        let mut column = ChunkColumn {
+            chunks,
+            biomes: None,
         };
         for chunk in &mut column.chunks {
             for x in chunk.blocks.iter_mut() {
@@ -91,7 +92,12 @@ impl ChunkColumn {
 
 impl fmt::Debug for ChunkColumn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ChunkColumn chunks={} biomes={}", self.chunks.len(), self.biomes.is_some())
+        write!(
+            f,
+            "ChunkColumn chunks={} biomes={}",
+            self.chunks.len(),
+            self.biomes.is_some()
+        )
     }
 }
 
@@ -108,15 +114,18 @@ impl Chunk {
     pub fn len(&self) -> usize {
         let sky = match self.sky_light {
             Some(_) => 2048,
-            None => 0
+            None => 0,
         };
         8192 + 2048 + sky
+    }
+    pub fn is_empty(&self) -> bool {
+        (&self).len() == 0
     }
     pub fn new(block: u16, light: u8) -> Chunk {
         Chunk {
             blocks: [block; 4096],
             block_light: [light; 2048],
-            sky_light: Some([light; 2048])
+            sky_light: Some([light; 2048]),
         }
     }
 }
@@ -126,16 +135,23 @@ impl Default for Chunk {
         Chunk {
             blocks: [0u16; 4096],
             block_light: [0u8; 2048],
-            sky_light: None
+            sky_light: None,
         }
     }
 }
 
 impl fmt::Debug for Chunk {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Chunk blocks=[{}, {}, {}, ..] block_light=[{}, {}, {}, ..] sky_light={}",
-               self.blocks[0], self.blocks[1], self.blocks[2],
-               self.block_light[0], self.block_light[1], self.block_light[2],
-               self.sky_light.is_some())
+        write!(
+            f,
+            "Chunk blocks=[{}, {}, {}, ..] block_light=[{}, {}, {}, ..] sky_light={}",
+            self.blocks[0],
+            self.blocks[1],
+            self.blocks[2],
+            self.block_light[0],
+            self.block_light[1],
+            self.block_light[2],
+            self.sky_light.is_some()
+        )
     }
 }

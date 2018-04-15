@@ -13,7 +13,9 @@ use uuid::{ParseError, Uuid};
 impl Protocol for Uuid {
     type Clean = Uuid;
 
-    fn proto_len(_: &Uuid) -> usize { 16 }
+    fn proto_len(_: &Uuid) -> usize {
+        16
+    }
     fn proto_encode(value: &Uuid, dst: &mut Write) -> io::Result<()> {
         dst.write_all(value.as_bytes())
     }
@@ -21,7 +23,12 @@ impl Protocol for Uuid {
     fn proto_decode(src: &mut Read) -> io::Result<Uuid> {
         let mut v = [0u8; 16];
         try!(src.read_exact(&mut v));
-        Uuid::from_bytes(&v).ok_or(io::Error::new(io::ErrorKind::InvalidInput, &format!("Invalid UUID value: {:?} can't be used to create UUID", v)[..]))
+        Uuid::from_bytes(&v).ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                &format!("Invalid UUID value: {:?} can't be used to create UUID", v)[..],
+            )
+        })
     }
 }
 

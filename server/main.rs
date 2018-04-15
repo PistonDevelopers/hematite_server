@@ -34,7 +34,7 @@ fn init_logger() -> Result<(), SetLoggerError> {
     Ok(())
 }
 
-fn main () {
+fn main() {
     init_logger().expect("failed to initialize logger");
 
     info!("hematite server");
@@ -49,14 +49,12 @@ fn main () {
         match conn {
             Ok(conn) => {
                 let srv = server_ref.clone();
-                thread::spawn(move|| {
-                    match srv.handle(conn) {
-                        Ok(_) => {}
-                        Err(err) => info!("{}", err)
-                    }
+                thread::spawn(move || match srv.handle(conn) {
+                    Ok(_) => {}
+                    Err(err) => info!("{}", err),
                 });
             }
-            Err(e) => info!("Connection error {:?}", e)
+            Err(e) => info!("Connection error {:?}", e),
         }
     }
 }
