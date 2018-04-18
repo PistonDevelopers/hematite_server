@@ -15,7 +15,7 @@ use rand;
 use time;
 
 // Temporal, only used within the BLOCK OF SHAME
-const PACKET_NAMES: [&'static str; 26] = [
+const PACKET_NAMES: [&str; 26] = [
     "(c2s) KeepAlive",
     "(c2s) ChatMessage",
     "(c2s) UseEntity",
@@ -41,17 +41,25 @@ const PACKET_NAMES: [&'static str; 26] = [
     "(c2s) ClientStatus",
     "(c2s) PluginMessage",
     "(c2s) Spectate",
-    "(c2s) ResourcePackStatus"
+    "(c2s) ResourcePackStatus",
 ];
 
 /// World is a set of dimensions which tick in sync.
 pub struct World {
-    start: time::Timespec
+    start: time::Timespec,
+}
+
+impl Default for World {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl World {
     pub fn new() -> World {
-        World { start: time::get_time() }
+        World {
+            start: time::get_time(),
+        }
     }
 
     // FIXME(toqueteos): Read from world's level.dat file
@@ -78,42 +86,50 @@ impl World {
         // - An id generator, can't use UUID here
         // - Read world info from disk
         // - Read some keypairs from server.properties
-        try!(JoinGame {
-            entity_id: 0,
-            gamemode: 0b0010,
-            dimension: Dimension::Overworld,
-            difficulty: 2,
-            max_players: 20,
-            level_type: "default".to_string(),
-            reduced_debug_info: false
-        }.write(&mut stream));
+        try!(
+            JoinGame {
+                entity_id: 0,
+                gamemode: 0b0010,
+                dimension: Dimension::Overworld,
+                difficulty: 2,
+                max_players: 20,
+                level_type: "default".to_string(),
+                reduced_debug_info: false,
+            }.write(&mut stream)
+        );
         debug!("<< JoinGame");
         // try!(stream.flush());
 
         // FIXME(toqueteos): Verify `flying_speed` and `walking_speed` values
         // are good, now they are just taken from Glowstone impl.
         // `flags` value is read from server's player list.
-        try!(PlayerAbilities {
-            flags: 0b1101, // flying and creative
-            flying_speed: 0.05,
-            walking_speed: 0.1
-        }.write(&mut stream));
+        try!(
+            PlayerAbilities {
+                flags: 0b1101, // flying and creative
+                flying_speed: 0.05,
+                walking_speed: 0.1,
+            }.write(&mut stream)
+        );
         debug!("<< PlayerAbilities");
         // try!(stream.flush());
 
         // WRITE `MC|Brand` plugin
-        try!(PluginMessage {
-            channel: "MC|Brand".to_string(),
-            data: b"hematite".to_vec()
-        }.write(&mut stream));
+        try!(
+            PluginMessage {
+                channel: "MC|Brand".to_string(),
+                data: b"hematite".to_vec(),
+            }.write(&mut stream)
+        );
         debug!("<< PluginMessage");
         // try!(stream.flush());
 
         // WRITE supported channels
-        try!(PluginMessage {
-            channel: "REGISTER".to_string(),
-            data: b"MC|Brand\0".to_vec()
-        }.write(&mut stream));
+        try!(
+            PluginMessage {
+                channel: "REGISTER".to_string(),
+                data: b"MC|Brand\0".to_vec(),
+            }.write(&mut stream)
+        );
         debug!("<< PluginMessage");
         // try!(stream.flush());
 
@@ -123,7 +139,11 @@ impl World {
         let mut data = vec![];
         for z in -1..2 {
             for x in -1..2 {
-                meta.push(ChunkMeta { x: x, z: z, mask: 0b000_0000_0000_1111 });
+                meta.push(ChunkMeta {
+                    x,
+                    z,
+                    mask: 0b000_0000_0000_1111,
+                });
                 data.push(ChunkColumn {
                     chunks: vec![
                         Chunk::new(1 << 4, 0xff),
@@ -131,52 +151,77 @@ impl World {
                         Chunk::new(3 << 4, 0xff),
                         Chunk::new(4 << 4, 0xff),
                     ],
-                    biomes: Some([1u8; 256])
+                    biomes: Some([1u8; 256]),
                 });
             }
         }
-        try!(ChunkDataBulk {
-            sky_light_sent: true,
-            chunk_meta: meta,
-            chunk_data: data,
-        }.write(&mut stream));
+        try!(
+            ChunkDataBulk {
+                sky_light_sent: true,
+                chunk_meta: meta,
+                chunk_data: data,
+            }.write(&mut stream)
+        );
         debug!("<< ChunkDataBulk");
         // try!(stream.flush());
 
         // Send Compass
-        try!(WorldSpawn { location: [10, 65, 10] }.write(&mut stream));
+        try!(
+            WorldSpawn {
+                location: [10, 65, 10],
+            }.write(&mut stream)
+        );
         debug!("<< WorldSpawn");
         // try!(stream.flush());
 
         // Send Time
-        try!(TimeUpdate {
-            world_age: self.world_age(),
-            time_of_day: self.time_of_day()
-        }.write(&mut stream));
+        try!(
+            TimeUpdate {
+                world_age: self.world_age(),
+                time_of_day: self.time_of_day(),
+            }.write(&mut stream)
+        );
         debug!("<< TimeUpdate");
         // try!(stream.flush());
 
         // Send Weather
-        try!(ChangeGameState { reason: 1, value: 0.0 }.write(&mut stream));
+        try!(
+            ChangeGameState {
+                reason: 1,
+                value: 0.0,
+            }.write(&mut stream)
+        );
         debug!("<< ChangeGameState Weather");
         // try!(stream.flush());
 
         // Send RainDensity
-        try!(ChangeGameState { reason: 8, value: 0.0 }.write(&mut stream));
+        try!(
+            ChangeGameState {
+                reason: 8,
+                value: 0.0,
+            }.write(&mut stream)
+        );
         debug!("<< ChangeGameState RainDensity");
         // try!(stream.flush());
 
         // Send SkyDarkness
-        try!(ChangeGameState { reason: 9, value: 0.0 }.write(&mut stream));
+        try!(
+            ChangeGameState {
+                reason: 9,
+                value: 0.0,
+            }.write(&mut stream)
+        );
         debug!("<< ChangeGameState SkyDarkness");
         // try!(stream.flush());
 
         // Send Abilities
-        try!(PlayerAbilities {
-            flags: 0b1101, // flying and creative
-            flying_speed: 0.05,
-            walking_speed: 0.1
-        }.write(&mut stream));
+        try!(
+            PlayerAbilities {
+                flags: 0b1101, // flying and creative
+                flying_speed: 0.05,
+                walking_speed: 0.1,
+            }.write(&mut stream)
+        );
         debug!("<< PlayerAbilities");
         try!(stream.flush());
 
@@ -189,19 +234,24 @@ impl World {
         debug!("<< WindowItems (not sent)");
         // try!(stream.flush());
 
-        try!(PlayerPositionAndLook {
-            position: [0.0, 64.0, 0.0],
-            yaw: 0.0,
-            pitch: 0.0,
-            flags: 0x1f
-        }.write(&mut stream));
+        try!(
+            PlayerPositionAndLook {
+                position: [0.0, 64.0, 0.0],
+                yaw: 0.0,
+                pitch: 0.0,
+                flags: 0x1f,
+            }.write(&mut stream)
+        );
         debug!("<< PlayerPositionAndLook");
         // try!(stream.flush());
 
         // Read Client Settings
         match try!(Packet::read(&mut stream)) {
             ClientSettings(cs) => debug!(">> ClientSettings {:?}", cs),
-            wrong_packet => panic!("Expecting play::serverbound::ClientSettings packet, got {:?}", wrong_packet)
+            wrong_packet => panic!(
+                "Expecting play::serverbound::ClientSettings packet, got {:?}",
+                wrong_packet
+            ),
         }
 
         // let cm = ChatMessage { data: Chat::new("Server: Welcome to hematite server!"), position: 1 };
@@ -210,7 +260,11 @@ impl World {
         // try!(stream.flush());
 
         // Send first Keep Alive
-        try!(KeepAlive { keep_alive_id: rand::random() }.write(&mut stream));
+        try!(
+            KeepAlive {
+                keep_alive_id: rand::random(),
+            }.write(&mut stream)
+        );
         debug!("<< KeepAlive");
         try!(stream.flush());
 
@@ -227,11 +281,18 @@ impl World {
             let mut buf = vec![0u8; n_read as usize];
             try!(stream.read_exact(&mut buf));
             // We could add a filter here, chat messages might be info!, position packets are debug!, etc...
-            debug!("id={} length={} buf={:?} t2-t={}", PACKET_NAMES[id as usize], len, buf, t);
+            debug!(
+                "id={} length={} buf={:?} t2-t={}",
+                PACKET_NAMES[id as usize], len, buf, t
+            );
 
             // Send KeepAlive every 20 seconds, otherwise client times out
             if t > 20 {
-                try!(KeepAlive { keep_alive_id: rand::random() }.write(&mut stream));
+                try!(
+                    KeepAlive {
+                        keep_alive_id: rand::random(),
+                    }.write(&mut stream)
+                );
                 debug!("<< KeepAlive");
                 try!(stream.flush());
 

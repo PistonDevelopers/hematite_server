@@ -40,7 +40,7 @@ enum_protocol_impl!(Dimension, i8, from_i8);
 pub enum Dimension {
     Nether = -1,
     Overworld = 0,
-    End = 1
+    End = 1,
 }
 
 impl FromPrimitive for Dimension {
@@ -49,7 +49,7 @@ impl FromPrimitive for Dimension {
             -1 => Some(Dimension::Nether),
             0 => Some(Dimension::Overworld),
             1 => Some(Dimension::End),
-            _ => None
+            _ => None,
         }
     }
 
@@ -57,29 +57,29 @@ impl FromPrimitive for Dimension {
         match n {
             0 => Some(Dimension::Overworld),
             1 => Some(Dimension::End),
-            _ => None
+            _ => None,
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Color {
-    Black       = 0x0,
-    DarkBlue    = 0x1,
-    DarkGreen   = 0x2,
-    DarkCyan    = 0x3,
-    DarkRed     = 0x4,
-    Purple      = 0x5,
-    Gold        = 0x6,
-    Gray        = 0x7,
-    DarkGray    = 0x8,
-    Blue        = 0x9,
+    Black = 0x0,
+    DarkBlue = 0x1,
+    DarkGreen = 0x2,
+    DarkCyan = 0x3,
+    DarkRed = 0x4,
+    Purple = 0x5,
+    Gold = 0x6,
+    Gray = 0x7,
+    DarkGray = 0x8,
+    Blue = 0x9,
     BrightGreen = 0xa,
-    Cyan        = 0xb,
-    Red         = 0xc,
-    Pink        = 0xd,
-    Yellow      = 0xe,
-    White       = 0xf
+    Cyan = 0xb,
+    Red = 0xc,
+    Pink = 0xd,
+    Yellow = 0xe,
+    White = 0xf,
 }
 
 impl AsRef<str> for Color {
@@ -100,7 +100,7 @@ impl AsRef<str> for Color {
             Color::Red => "red",
             Color::Pink => "light_purple",
             Color::Yellow => "yellow",
-            Color::White => "white"
+            Color::White => "white",
         }
     }
 }
@@ -110,23 +110,23 @@ impl FromStr for Color {
 
     fn from_str(string: &str) -> Result<Color, ()> {
         match string {
-            "black"        => Ok(Color::Black),
-            "dark_blue"    => Ok(Color::DarkBlue),
-            "dark_green"   => Ok(Color::DarkGreen),
-            "dark_aqua"    => Ok(Color::DarkCyan),
-            "dark_red"     => Ok(Color::DarkRed),
-            "dark_purple"  => Ok(Color::Purple),
-            "gold"         => Ok(Color::Gold),
-            "gray"         => Ok(Color::Gray),
-            "dark_gray"    => Ok(Color::DarkGray),
-            "blue"         => Ok(Color::Blue),
-            "green"        => Ok(Color::BrightGreen),
-            "aqua"         => Ok(Color::Cyan),
-            "red"          => Ok(Color::Red),
+            "black" => Ok(Color::Black),
+            "dark_blue" => Ok(Color::DarkBlue),
+            "dark_green" => Ok(Color::DarkGreen),
+            "dark_aqua" => Ok(Color::DarkCyan),
+            "dark_red" => Ok(Color::DarkRed),
+            "dark_purple" => Ok(Color::Purple),
+            "gold" => Ok(Color::Gold),
+            "gray" => Ok(Color::Gray),
+            "dark_gray" => Ok(Color::DarkGray),
+            "blue" => Ok(Color::Blue),
+            "green" => Ok(Color::BrightGreen),
+            "aqua" => Ok(Color::Cyan),
+            "red" => Ok(Color::Red),
             "light_purple" => Ok(Color::Pink),
-            "yellow"       => Ok(Color::Yellow),
-            "white"        => Ok(Color::White),
-            _              => Err(())
+            "yellow" => Ok(Color::Yellow),
+            "white" => Ok(Color::White),
+            _ => Err(()),
         }
     }
 }

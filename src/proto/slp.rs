@@ -58,7 +58,10 @@ impl Protocol for Response {
         <String as Protocol>::proto_len(&json::encode(&value).unwrap())
     }
     fn proto_encode(value: &Response, dst: &mut Write) -> io::Result<()> {
-        try!(<String as Protocol>::proto_encode(&json::encode(&value).unwrap(), dst));
+        try!(<String as Protocol>::proto_encode(
+            &json::encode(&value).unwrap(),
+            dst
+        ));
         Ok(())
     }
     fn proto_decode(src: &mut Read) -> io::Result<Response> {
@@ -87,17 +90,17 @@ pub fn response(stream: &mut TcpStream) -> io::Result<()> {
             // FIXME(toqueteos): Micro-optimization? We could totally drop JSON
             // encoding and just replace player values (online & max) with format! all
             // other values are static.
-            let resp = Response{
-                version: Version{
+            let resp = Response {
+                version: Version {
                     name: consts::VERSION.to_string(),
                     protocol: consts::PROTO_VERSION,
                 },
-                players: Players{
+                players: Players {
                     // FIXME(toqueteos): This is value should be a internal counter of server
                     online: 0,
                     // FIXME(toqueteos): This is value read from server.properties file
                     max: 20,
-                    sample: None
+                    sample: None,
                 },
                 description: "With custom favicons! Woot :D".to_string(),
                 favicon: Some(format!("data:image/png;base64,{:}", favicon)),
@@ -105,7 +108,13 @@ pub fn response(stream: &mut TcpStream) -> io::Result<()> {
             try!(StatusResponse { response: resp }.write(stream));
             Ok(())
         }
-        wrong_packet => Err(io::Error::new(InvalidInput, &format!("Invalid packet read, expecting C->S StatusRequest packet, got {:?}", wrong_packet)[..]))
+        wrong_packet => Err(io::Error::new(
+            InvalidInput,
+            &format!(
+                "Invalid packet read, expecting C->S StatusRequest packet, got {:?}",
+                wrong_packet
+            )[..],
+        )),
     }
 }
 
@@ -121,7 +130,13 @@ pub fn pong(stream: &mut TcpStream) -> io::Result<()> {
             try!(Pong { time: ping.time }.write(stream));
             Ok(())
         }
-        wrong_packet => Err(io::Error::new(InvalidInput, &format!("Invalid packet read, expecting C->S Ping packet, got {:?}", wrong_packet)[..]))
+        wrong_packet => Err(io::Error::new(
+            InvalidInput,
+            &format!(
+                "Invalid packet read, expecting C->S Ping packet, got {:?}",
+                wrong_packet
+            )[..],
+        )),
     }
 }
 
@@ -136,7 +151,13 @@ pub fn request(stream: &mut TcpStream) -> io::Result<Response> {
     // S->C: Status Response packet
     match try!(Packet::read(stream)) {
         StatusResponse(resp) => Ok(resp.response),
-        wrong_packet => Err(io::Error::new(InvalidInput, &format!("Invalid packet read, expecting S->C StatusResponse packet, got {:?}", wrong_packet)[..]))
+        wrong_packet => Err(io::Error::new(
+            InvalidInput,
+            &format!(
+                "Invalid packet read, expecting S->C StatusResponse packet, got {:?}",
+                wrong_packet
+            )[..],
+        )),
     }
 }
 
@@ -156,7 +177,13 @@ pub fn ping(stream: &mut TcpStream) -> io::Result<i64> {
             let elapsed = end.sub(start).num_milliseconds();
             Ok(elapsed)
         }
-        wrong_packet => Err(io::Error::new(InvalidInput, &format!("Invalid packet read, expecting S->C Pong packet, got {:?}", wrong_packet)[..]))
+        wrong_packet => Err(io::Error::new(
+            InvalidInput,
+            &format!(
+                "Invalid packet read, expecting S->C Pong packet, got {:?}",
+                wrong_packet
+            )[..],
+        )),
     }
 }
 
@@ -175,7 +202,7 @@ mod tests {
     use std::net::TcpStream;
 
     use packet::handshake::Handshake;
-    use packet::{PacketWrite, NextState};
+    use packet::{NextState, PacketWrite};
 
     #[test]
     #[cfg(vanilla_server_required)]
@@ -185,8 +212,9 @@ mod tests {
             proto_version: consts::PROTO_VERSION,
             server_address: "127.0.0.1".to_string(),
             server_port: 25565,
-            next_state: NextState::Status
-        }.write(&mut stream).unwrap();
+            next_state: NextState::Status,
+        }.write(&mut stream)
+            .unwrap();
         let response = request(&mut stream).unwrap();
         println!("request {:?}", response);
         let elapsed = ping(&mut stream).unwrap();
@@ -204,8 +232,9 @@ mod tests {
             proto_version: consts::PROTO_VERSION,
             server_address: "127.0.0.1".to_string(),
             server_port: 25565,
-            next_state: NextState::Status
-        }.write(&mut stream).unwrap();
+            next_state: NextState::Status,
+        }.write(&mut stream)
+            .unwrap();
         let response = request(&mut stream).unwrap();
         println!("request {:?}", response);
     }

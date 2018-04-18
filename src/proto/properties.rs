@@ -180,7 +180,7 @@ server_properties_impl! {
     { max_build_height, "max-build-height", i32, 256 }
     { max_players, "max-players", i32, 20 }
     { max_tick_time, "max-tick-time", i32, 60000 }
-    { max_world_size, "max-world-size", i32, 29999984 }
+    { max_world_size, "max-world-size", i32, 29_999_984 }
     { motd, "motd", String, "A Minecraft Server".to_string() }
     { network_compression_threshold, "network-compression-threshold", i32, 256 }
     { online_mode, "online-mode", bool, true }

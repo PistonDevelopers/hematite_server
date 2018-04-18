@@ -16,7 +16,7 @@ pub enum JsonType {
     Number,
     String,
     Array,
-    Object
+    Object,
 }
 
 impl<'a> From<&'a Json> for JsonType {
@@ -27,27 +27,33 @@ impl<'a> From<&'a Json> for JsonType {
             Json::I64(_) | Json::U64(_) | Json::F64(_) => JsonType::Number,
             Json::String(_) => JsonType::String,
             Json::Array(_) => JsonType::Array,
-            Json::Object(_) => JsonType::Object
+            Json::Object(_) => JsonType::Object,
         }
     }
 }
 
 impl From<Json> for JsonType {
-    fn from(v: Json) -> JsonType { JsonType::from(&v) }
+    fn from(v: Json) -> JsonType {
+        JsonType::from(&v)
+    }
 }
 
 #[derive(Debug)]
 pub enum ChatJsonError {
     MalformedJson(json::ParserError),
     IoError(io::Error),
-    InvalidFieldType { name: String, expected: JsonType, found: JsonType },
+    InvalidFieldType {
+        name: String,
+        expected: JsonType,
+        found: JsonType,
+    },
     InvalidRootType(JsonType),
     UnknownField(String),
     InvalidColor(String),
     InvalidClickEvent,
     InvalidHoverEvent,
     InvalidScore,
-    SelectorError(selector::Error)
+    SelectorError(selector::Error),
 }
 
 impl From<io::Error> for ChatJsonError {
@@ -80,7 +86,7 @@ pub struct ChatJson {
     pub formats: BTreeSet<Format>,
     pub click_event: Option<ClickEvent>,
     pub hover_event: Option<HoverEvent>,
-    pub insertion: Option<String>
+    pub insertion: Option<String>,
 }
 
 macro_rules! type_check {
@@ -146,7 +152,7 @@ impl ChatJson {
                                 if score.keys().any(|k| k != "name" && k != "objective") {
                                     return Err(ChatJsonError::InvalidScore)
                                 }
-                                result.msg = Message::Score { name: name, objective: objective };
+                                result.msg = Message::Score { name, objective };
                             });
                         }
                         "selector" => {
@@ -168,9 +174,9 @@ impl ChatJson {
                             });
                         }
                         // Handle all of the different format strings.
-                        "bold"|"italic"|"underlined"|"strikethrough"|"obfuscated"|"reset"|"random" => {
+                        "bold" | "italic" | "underlined" | "strikethrough" | "obfuscated" | "reset" | "random" => {
                             type_check!(&key => value, Boolean(b) {
-                                if b == true {
+                                if b {
                                     result.formats.insert(Format::from_string(&key).unwrap());
                                 }
                             });
@@ -228,19 +234,20 @@ impl ChatJson {
                         }
                         "extra" => {
                             type_check!(&key => value, Array(extra) {
-                                result.extra = try!(extra.into_iter().map(|elt| ChatJson::from_json(elt)).collect());
+                                result.extra = try!(extra.into_iter().map(ChatJson::from_json).collect());
                             });
                         }
-                        v => return Err(ChatJsonError::UnknownField(v.to_string()))
+                        v => return Err(ChatJsonError::UnknownField(v.to_string())),
                     };
                 }
                 Ok(result)
             }
-            Json::Array(array) => {
-                Ok(ChatJson { extra: try!(array.into_iter().map(|elt| ChatJson::from_json(elt)).collect()), ..ChatJson::from("") })
-            }
+            Json::Array(array) => Ok(ChatJson {
+                extra: try!(array.into_iter().map(ChatJson::from_json).collect()),
+                ..ChatJson::from("")
+            }),
             Json::String(string) => Ok(ChatJson::from(string)),
-            v => Err(ChatJsonError::InvalidRootType(JsonType::from(v)))
+            v => Err(ChatJsonError::InvalidRootType(JsonType::from(v))),
         }
     }
 }
@@ -254,7 +261,7 @@ impl From<String> for ChatJson {
             formats: BTreeSet::new(),
             click_event: None,
             hover_event: None,
-            insertion: None
+            insertion: None,
         }
     }
 }
@@ -267,8 +274,17 @@ impl<'a> From<&'a str> for ChatJson {
 
 impl ToJson for ChatJson {
     fn to_json(&self) -> Json {
-        if let ChatJson { msg: Message::PlainText(ref text), ref extra, color: None, ref formats, click_event: None, hover_event: None, insertion: None } = *self {
-            if extra.len() == 0 && *formats == BTreeSet::new() {
+        if let ChatJson {
+            msg: Message::PlainText(ref text),
+            ref extra,
+            color: None,
+            ref formats,
+            click_event: None,
+            hover_event: None,
+            insertion: None,
+        } = *self
+        {
+            if extra.is_empty() && *formats == BTreeSet::new() {
                 // No formatting or other fancy stuff is used, just return the JSON string
                 return text.to_json();
             }
@@ -280,7 +296,10 @@ impl ToJson for ChatJson {
             Message::PlainText(ref text) => {
                 d.insert("text".to_string(), text.to_json());
             }
-            Message::Score { ref name, ref objective } => {
+            Message::Score {
+                ref name,
+                ref objective,
+            } => {
                 let mut score = json::Object::default();
                 score.insert("name".to_owned(), Json::String(name.clone()));
                 score.insert("objective".to_owned(), Json::String(objective.clone()));
@@ -299,7 +318,7 @@ impl ToJson for ChatJson {
             d.insert(format.to_string(), Json::Boolean(true));
         }
 
-        if self.extra.len() > 0 {
+        if !self.extra.is_empty() {
             d.insert("extra".to_string(), self.extra.to_json());
         }
         if let Some(ref color) = self.color {
@@ -330,7 +349,7 @@ pub enum Message {
     PlainText(String),
     Score { name: String, objective: String },
     Translatable(String, Vec<ChatJson>),
-    Selector(EntitySelector)
+    Selector(EntitySelector),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -338,26 +357,26 @@ pub enum ClickEvent {
     OpenUrl(String),
     OpenFile(String),
     RunCommand(String),
-    SuggestCommand(String)
+    SuggestCommand(String),
 }
 
 impl ToJson for ClickEvent {
     fn to_json(&self) -> Json {
         let mut d = BTreeMap::new();
-        match self {
-            &ClickEvent::OpenUrl(ref url) => {
+        match *self {
+            ClickEvent::OpenUrl(ref url) => {
                 d.insert("action".to_string(), "open_url".to_json());
                 d.insert("value".to_string(), url.to_json());
-            },
-            &ClickEvent::OpenFile(ref file) => {
+            }
+            ClickEvent::OpenFile(ref file) => {
                 d.insert("action".to_string(), "open_file".to_json());
                 d.insert("value".to_string(), file.to_json());
-            },
-            &ClickEvent::RunCommand(ref cmd) => {
+            }
+            ClickEvent::RunCommand(ref cmd) => {
                 d.insert("action".to_string(), "run_command".to_json());
                 d.insert("value".to_string(), cmd.to_json());
-            },
-            &ClickEvent::SuggestCommand(ref cmd) => {
+            }
+            ClickEvent::SuggestCommand(ref cmd) => {
                 d.insert("action".to_string(), "suggest_command".to_json());
                 d.insert("value".to_string(), cmd.to_json());
             }
@@ -370,22 +389,22 @@ impl ToJson for ClickEvent {
 pub enum HoverEvent {
     Text(String),
     Achievement(String),
-    Item(String)
+    Item(String),
 }
 
 impl ToJson for HoverEvent {
     fn to_json(&self) -> Json {
         let mut d = BTreeMap::new();
-        match self {
-            &HoverEvent::Text(ref text) => {
+        match *self {
+            HoverEvent::Text(ref text) => {
                 d.insert("action".to_string(), "show_text".to_json());
                 d.insert("value".to_string(), text.to_json());
-            },
-            &HoverEvent::Achievement(ref ach) => {
+            }
+            HoverEvent::Achievement(ref ach) => {
                 d.insert("action".to_string(), "show_achievement".to_json());
                 d.insert("value".to_string(), ach.to_json());
-            },
-            &HoverEvent::Item(ref item) => {
+            }
+            HoverEvent::Item(ref item) => {
                 d.insert("action".to_string(), "show_item".to_json());
                 // The string is actually a JSON object, just in the form of a
                 // string.
@@ -398,32 +417,38 @@ impl ToJson for HoverEvent {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum Format {
-    Bold, Underlined, Strikethrough, Italic, Obfuscated, Random, Reset
+    Bold,
+    Underlined,
+    Strikethrough,
+    Italic,
+    Obfuscated,
+    Random,
+    Reset,
 }
 
 impl Format {
     pub fn to_string(&self) -> String {
-        match self {
-            &Format::Bold          => "bold".to_string(),
-            &Format::Italic        => "italic".to_string(),
-            &Format::Underlined    => "underlined".to_string(),
-            &Format::Strikethrough => "strikethrough".to_string(),
-            &Format::Obfuscated    => "obfuscated".to_string(),
-            &Format::Random        => "random".to_string(),
-            &Format::Reset         => "reset".to_string()
+        match *self {
+            Format::Bold => "bold".to_string(),
+            Format::Italic => "italic".to_string(),
+            Format::Underlined => "underlined".to_string(),
+            Format::Strikethrough => "strikethrough".to_string(),
+            Format::Obfuscated => "obfuscated".to_string(),
+            Format::Random => "random".to_string(),
+            Format::Reset => "reset".to_string(),
         }
     }
 
     pub fn from_string(string: &str) -> Option<Format> {
         match string {
-            "bold"          => Some(Format::Bold),
-            "italic"        => Some(Format::Italic),
-            "underlined"    => Some(Format::Underlined),
+            "bold" => Some(Format::Bold),
+            "italic" => Some(Format::Italic),
+            "underlined" => Some(Format::Underlined),
             "strikethrough" => Some(Format::Strikethrough),
-            "obfuscated"    => Some(Format::Obfuscated),
-            "random"        => Some(Format::Random),
-            "reset"         => Some(Format::Reset),
-            _               => None
+            "obfuscated" => Some(Format::Obfuscated),
+            "random" => Some(Format::Random),
+            "reset" => Some(Format::Reset),
+            _ => None,
         }
     }
 }
@@ -452,11 +477,15 @@ mod test {
         }"#;
         let parsed = ChatJson::from_reader(&mut io::Cursor::new(blob.as_bytes()));
         match parsed {
-            Err(ChatJsonError::InvalidFieldType { name, expected: JsonType::String, found: JsonType::Boolean }) => {
+            Err(ChatJsonError::InvalidFieldType {
+                name,
+                expected: JsonType::String,
+                found: JsonType::Boolean,
+            }) => {
                 assert_eq!(&name, "text");
             }
             Err(_) => panic!("Wrong error type"),
-            Ok(_) => panic!("Should return error on invalid field type")
+            Ok(_) => panic!("Should return error on invalid field type"),
         }
     }
 

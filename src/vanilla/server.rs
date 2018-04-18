@@ -18,14 +18,14 @@ pub struct Server {
     props: Properties,
     // Dummy player storage, just their username.
     // players: Vec<String>,
-    worlds: Vec<World>
+    worlds: Vec<World>,
 }
 
 impl Server {
     pub fn new() -> io::Result<Server> {
         let properties_path = &Path::new("server.properties");
         let props = match fs::metadata(properties_path) {
-        // let props = match properties_path.metadata() {
+            // let props = match properties_path.metadata() {
             Ok(_) => try!(Properties::load(properties_path)),
             Err(_) => Properties::default(),
         };
@@ -39,23 +39,29 @@ impl Server {
             props.server_ip.clone()
         };
         Ok(Server {
-            addr: addr,
-            props: props,
+            addr,
+            props,
             // players: vec![],
-            worlds: vec![World::new()]
+            worlds: vec![World::new()],
         })
     }
 
-    pub fn addr(&self) -> &str { return &self.addr }
-    pub fn port(&self) -> u16 { self.props.server_port }
+    pub fn addr(&self) -> &str {
+        &self.addr
+    }
+    pub fn port(&self) -> u16 {
+        self.props.server_port
+    }
 
     #[allow(unreachable_code)]
     pub fn handle(&self, mut stream: TcpStream) -> io::Result<()> {
         use packet::handshake::Packet::{self, Handshake};
         let state = match try!(Packet::read(&mut stream)) {
             Handshake(hs) => {
-                debug!("Handshake proto_version={} server_address={} server_port={} next_state={:?}",
-                         hs.proto_version, hs.server_address, hs.server_port, hs.next_state);
+                debug!(
+                    "Handshake proto_version={} server_address={} server_port={} next_state={:?}",
+                    hs.proto_version, hs.server_address, hs.server_port, hs.next_state
+                );
                 hs.next_state
             }
         };
@@ -66,26 +72,33 @@ impl Server {
             }
             NextState::Login => {
                 use packet::login::serverbound::Packet;
-                use packet::login::serverbound::Packet::{LoginStart, EncryptionResponse};
+                use packet::login::serverbound::Packet::{EncryptionResponse, LoginStart};
                 use packet::login::clientbound::{LoginSuccess, SetCompression};
 
-                let name = match try!(Packet::read(&mut stream)) {
+                let username = match try!(Packet::read(&mut stream)) {
                     LoginStart(login) => login.name,
                     EncryptionResponse(_) => {
-                        return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                   "Expecting login::serverbound::LoginStart packet, got EncryptionResponse"));
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            "Expecting login::serverbound::LoginStart packet, got EncryptionResponse",
+                        ));
                     }
                 };
-                debug!(">> LoginStart name={}", name);
+                debug!(">> LoginStart name={}", username);
 
                 // NOTE: threshold of `-1` disables compression
                 let threshold = -1;
-                try!(SetCompression { threshold: threshold }.write(&mut stream));
+                try!(SetCompression { threshold }.write(&mut stream));
                 debug!("<< LoginSetCompression");
                 // try!(stream.flush());
 
                 // NOTE: UUID *MUST* be sent with hyphens
-                try!(LoginSuccess { uuid: Uuid::new_v4(), username: name }.write(&mut stream));
+                try!(
+                    LoginSuccess {
+                        uuid: Uuid::new_v4(),
+                        username,
+                    }.write(&mut stream)
+                );
                 debug!("<< LoginSuccess");
                 // try!(stream.flush());
 
