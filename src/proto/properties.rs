@@ -12,27 +12,34 @@ macro_rules! parse {
         $value.to_string()
     };
     ($value:ident, bool) => {
-        try!($value.parse().map_err(|_: ParseBoolError| io::Error::new(io::ErrorKind::InvalidInput, "invalid bool value")))
+        $value.parse().map_err(|_: ParseBoolError| {
+            io::Error::new(io::ErrorKind::InvalidInput, "invalid bool value")
+        })?
     };
     ($value:ident, i32) => {
-        try!($value.parse().map_err(|_: ParseIntError| io::Error::new(io::ErrorKind::InvalidInput, "invalid i32 value")))
+        $value.parse().map_err(|_: ParseIntError| {
+            io::Error::new(io::ErrorKind::InvalidInput, "invalid i32 value")
+        })?
     };
     ($value:ident, u16) => {
-        try!($value.parse().map_err(|_: ParseIntError| io::Error::new(io::ErrorKind::InvalidInput, "invalid u16 value")))
-    }
+        $value.parse().map_err(|_: ParseIntError| {
+            io::Error::new(io::ErrorKind::InvalidInput, "invalid u16 value")
+        })?
+    };
 }
 
 macro_rules! server_properties_impl {
     ($({ $field:ident, $hyphen:expr, $fty:ident, $default:expr})+) => {
         /// Vanilla server.properties
         ///
-        /// Documentation of each filed here: http://minecraft.gamepedia.com/Server.properties
+        /// Documentation of each filed here: <http://minecraft.gamepedia.com/Server.properties>
         #[derive(Debug, PartialEq)]
         pub struct Properties {
             $(pub $field: $fty),*
         }
 
         impl Properties {
+            #[must_use]
             pub fn default() -> Properties {
                 Properties{
                     $($field: $default),*
@@ -42,7 +49,7 @@ macro_rules! server_properties_impl {
             /// Load and parse a server.properties file from `path`,
             pub fn load(path: &Path) -> io::Result<Properties> {
                 let mut p = Properties::default();
-                let file = try!(File::open(path));
+                let file = File::open(path)?;
                 let file = BufReader::new(file);
                 for line in file.lines().map(|l| l.unwrap()) {
                     // Ignore comment lines
@@ -62,16 +69,16 @@ macro_rules! server_properties_impl {
             /// Saves a server.properties file into `path`. It creates the
             /// file if it does not exist, and will truncate it if it does.
             pub fn save(&self, path: &Path) -> io::Result<()> {
-                let file = try!(File::create(path));
+                let file = File::create(path)?;
                 let mut file = BufWriter::new(file);
                 // Header
-                try!(write!(&mut file, "#Minecraft server properties"));
-                try!(write!(&mut file, "#(File modification datestamp)"));
+                write!(&mut file, "#Minecraft server properties")?;
+                write!(&mut file, "#(File modification datestamp)")?;
                 // Body. Vanilla MC does write 37 out of 40 properties by default, it
                 // only writes the 3 left if they are not using default values. It
                 // also writes them unsorted (possibly because they are stored in a
                 // HashMap).
-                $(try!(write!(&mut file, "{}={}\n", $hyphen, self.$field));)*
+                $(write!(&mut file, "{}={}\n", $hyphen, self.$field)?;)*
                 Ok(())
             }
         }
@@ -134,7 +141,6 @@ macro_rules! server_properties_impl {
             #[test]
             fn load_unknown_property() {
                 use std::env;
-                use std::error::Error;
                 use std::fs;
                 use std::io::Write;
 
@@ -146,7 +152,7 @@ macro_rules! server_properties_impl {
 
                 match Properties::load(&dir) {
                     Ok(_) => { panic!("server.properties should have failed to load"); }
-                    Err(err) => { assert_eq!(err.description(), "Unknown property foo-bar"); },
+                    Err(err) => { assert_eq!(err.to_string(), "Unknown property foo-bar"); },
                 }
 
                 fs::remove_file(&dir).unwrap();
@@ -180,7 +186,7 @@ server_properties_impl! {
     { max_build_height, "max-build-height", i32, 256 }
     { max_players, "max-players", i32, 20 }
     { max_tick_time, "max-tick-time", i32, 60000 }
-    { max_world_size, "max-world-size", i32, 29999984 }
+    { max_world_size, "max-world-size", i32, 29_999_984 }
     { motd, "motd", String, "A Minecraft Server".to_string() }
     { network_compression_threshold, "network-compression-threshold", i32, 256 }
     { online_mode, "online-mode", bool, true }

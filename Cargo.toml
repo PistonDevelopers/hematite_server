@@ -6,6 +6,7 @@ authors = [
     "Carlos Cobo <toqueteos@gmail.com>"
 ]
 license = "MIT"
+edition = "2018"
 keywords = ["hematite", "minecraft", "server", "piston"]
 description = "A Minecraft server clone"
 repository = "https://github.com/PistonDevelopers/hematite_server"
@@ -23,12 +24,12 @@ name = "hematite_server"
 path = "src/lib.rs"
 
 [dependencies]
-byteorder = "1.0.0"
-flate2 = "0.2"
+byteorder = "1.4.3"
+flate2 = "1.0"
 hematite-nbt = "0.3"
 log = "0.4"
-num = "0.2"
-rand = "0.5.5"
+num = "0.4"
+rand = "0.8.4"
 regex = "0.1"
 rustc-serialize = "0.3"
 time = "0.1"

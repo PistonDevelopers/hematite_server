@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::num::{ParseFloatError, ParseIntError};
 use std::str::FromStr;
 
-use util::{Join, Range};
+use crate::util::{Join, Range};
 
 use regex::Regex;
 
@@ -11,12 +11,12 @@ use regex::Regex;
 pub enum Attr<T> {
     Is(T),
     Not(T),
-    Unspecified
+    Unspecified,
 }
 
 impl<T: From<String>> From<String> for Attr<T> {
     fn from(s: String) -> Attr<T> {
-        if s.len() == 0 {
+        if s.is_empty() {
             Attr::Unspecified
         } else if &s[..1] == "!" {
             Attr::Not(T::from(s[1..].to_string()))
@@ -28,7 +28,7 @@ impl<T: From<String>> From<String> for Attr<T> {
 
 impl<'a, T: From<String>> From<&'a str> for Attr<T> {
     fn from(s: &str) -> Attr<T> {
-        if s.len() == 0 {
+        if s.is_empty() {
             Attr::Unspecified
         } else if &s[..1] == "!" {
             Attr::Not(T::from(s[1..].to_string()))
@@ -46,7 +46,7 @@ pub enum Error {
     MalformedInt(ParseIntError),
     MalformedSelector,
     PositionalAfterNamed,
-    TooManyPositionalArgs
+    TooManyPositionalArgs,
 }
 
 impl From<ParseFloatError> for Error {
@@ -76,11 +76,12 @@ pub struct EntitySelector {
     name: Attr<String>,
     pitch: Range<f32>,
     yaw: Range<f32>,
-    entity_type: Attr<String>
+    entity_type: Attr<String>,
 }
 
 impl EntitySelector {
     /// Returns a selector equivalent to `@a`, matching all players.
+    #[must_use]
     pub fn all() -> EntitySelector {
         EntitySelector {
             entity_type: Attr::Is("Player".to_string()),
@@ -89,6 +90,7 @@ impl EntitySelector {
     }
 
     /// Returns a selector equivalent to `@p`, matching the nearest player.
+    #[must_use]
     pub fn player() -> EntitySelector {
         EntitySelector {
             count: 1,
@@ -98,6 +100,7 @@ impl EntitySelector {
     }
 
     /// Returns a selector equivalent to `@r`, matching a random player.
+    #[must_use]
     pub fn random() -> EntitySelector {
         EntitySelector {
             random: true,
@@ -124,7 +127,7 @@ impl Default for EntitySelector {
             name: Attr::Unspecified,
             pitch: Range::from(..),
             yaw: Range::from(..),
-            entity_type: Attr::Unspecified
+            entity_type: Attr::Unspecified,
         }
     }
 }
@@ -133,16 +136,16 @@ impl FromStr for EntitySelector {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<EntitySelector, Error> {
-        if let Some(captures) = Regex::new(r"^@(.)(\[(.*)\])?$").unwrap().captures(s) {
+        if let Some(captures) = Regex::new(r"^@(.)(\[(.*)])?$").unwrap().captures(s) {
             let mut result = match captures.at(1).unwrap() {
                 "a" => EntitySelector::all(),
                 "e" => EntitySelector::default(),
                 "p" => EntitySelector::player(),
                 "r" => EntitySelector::random(),
-                sigil => return Err(Error::InvalidSigil(sigil.to_string()))
+                sigil => return Err(Error::InvalidSigil(sigil.to_string())),
             };
             if let Some(args) = captures.at(3) {
-                let mut positional_seen = 0u8; // number of positional arguments (x, y, z, r) encountered
+                let mut positional_seen = 0_u8; // number of positional arguments (x, y, z, r) encountered
                 let mut named_seen = false; // whether a named argument has been encountered
                 for arg in args.split(',') {
                     if let Some(captures) = Regex::new("^(.*)=(.*)$").unwrap().captures(arg) {
@@ -150,32 +153,76 @@ impl FromStr for EntitySelector {
                         let key = captures.at(1).unwrap();
                         let value = captures.at(2).unwrap();
                         match key {
-                            "x" => { result.position[0] = Some(try!(i32::from_str(value))); }
-                            "y" => { result.position[1] = Some(try!(i32::from_str(value))); }
-                            "z" => { result.position[2] = Some(try!(i32::from_str(value))); }
-                            "dx" => { result.delta_pos[0] = Some(try!(i32::from_str(value))); }
-                            "dy" => { result.delta_pos[1] = Some(try!(i32::from_str(value))); }
-                            "dz" => { result.delta_pos[2] = Some(try!(i32::from_str(value))); }
-                            "r" => { result.radius.end = Some(try!(i32::from_str(value))); }
-                            "rm" => { result.radius.start = Some(try!(i32::from_str(value))); }
-                            "m" => { result.gamemode = Some(try!(u8::from_str(value))); }
-                            "c" => { result.count = try!(i32::from_str(value)); }
-                            "l" => { result.xp_level.end = Some(try!(i32::from_str(value))); }
-                            "lm" => { result.xp_level.start = Some(try!(i32::from_str(value))); }
-                            "team" => { result.team = Attr::from(value) }
-                            "name" => { result.name = Attr::from(value) }
-                            "rx" => { result.pitch.end = Some(try!(f32::from_str(value))); }
-                            "rxm" => { result.pitch.start = Some(try!(f32::from_str(value))); }
-                            "ry" => { result.yaw.end = Some(try!(f32::from_str(value))); }
-                            "rym" => { result.yaw.start = Some(try!(f32::from_str(value))); }
-                            "type" => { result.entity_type = Attr::from(value) }
+                            "x" => {
+                                result.position[0] = Some(i32::from_str(value)?);
+                            }
+                            "y" => {
+                                result.position[1] = Some(i32::from_str(value)?);
+                            }
+                            "z" => {
+                                result.position[2] = Some(i32::from_str(value)?);
+                            }
+                            "dx" => {
+                                result.delta_pos[0] = Some(i32::from_str(value)?);
+                            }
+                            "dy" => {
+                                result.delta_pos[1] = Some(i32::from_str(value)?);
+                            }
+                            "dz" => {
+                                result.delta_pos[2] = Some(i32::from_str(value)?);
+                            }
+                            "r" => {
+                                result.radius.end = Some(i32::from_str(value)?);
+                            }
+                            "rm" => {
+                                result.radius.start = Some(i32::from_str(value)?);
+                            }
+                            "m" => {
+                                result.gamemode = Some(u8::from_str(value)?);
+                            }
+                            "c" => {
+                                result.count = i32::from_str(value)?;
+                            }
+                            "l" => {
+                                result.xp_level.end = Some(i32::from_str(value)?);
+                            }
+                            "lm" => {
+                                result.xp_level.start = Some(i32::from_str(value)?);
+                            }
+                            "team" => result.team = Attr::from(value),
+                            "name" => result.name = Attr::from(value),
+                            "rx" => {
+                                result.pitch.end = Some(f32::from_str(value)?);
+                            }
+                            "rxm" => {
+                                result.pitch.start = Some(f32::from_str(value)?);
+                            }
+                            "ry" => {
+                                result.yaw.end = Some(f32::from_str(value)?);
+                            }
+                            "rym" => {
+                                result.yaw.start = Some(f32::from_str(value)?);
+                            }
+                            "type" => result.entity_type = Attr::from(value),
                             k => {
-                                if let Some(captures) = Regex::new("score_([A-Za-z]+)").unwrap().captures(k) {
+                                if let Some(captures) =
+                                    Regex::new("score_([A-Za-z]+)").unwrap().captures(k)
+                                {
                                     let objective = captures.at(1).unwrap();
-                                    result.scores.entry(objective.to_string()).or_insert(Range::from(..)).end = Some(try!(i32::from_str(value)));
-                                } else if let Some(captures) = Regex::new("score_([A-Za-z]+)_min").unwrap().captures(k) {
+                                    result
+                                        .scores
+                                        .entry(objective.to_string())
+                                        .or_insert_with(|| Range::from(..))
+                                        .end = Some(i32::from_str(value)?);
+                                } else if let Some(captures) =
+                                    Regex::new("score_([A-Za-z]+)_min").unwrap().captures(k)
+                                {
                                     let objective = captures.at(1).unwrap();
-                                    result.scores.entry(objective.to_string()).or_insert(Range::from(..)).start = Some(try!(i32::from_str(value)));
+                                    result
+                                        .scores
+                                        .entry(objective.to_string())
+                                        .or_insert_with(|| Range::from(..))
+                                        .start = Some(i32::from_str(value)?);
                                 } else {
                                     return Err(Error::InvalidArgName(k.to_string()));
                                 }
@@ -191,11 +238,19 @@ impl FromStr for EntitySelector {
                             // empty, keep default
                         } else {
                             match positional_seen {
-                                0 => { result.position[0] = Some(try!(i32::from_str(arg))); }
-                                1 => { result.position[1] = Some(try!(i32::from_str(arg))); }
-                                2 => { result.position[2] = Some(try!(i32::from_str(arg))); }
-                                3 => { result.radius = Range::from(..try!(i32::from_str(arg))); }
-                                _ => return Err(Error::TooManyPositionalArgs)
+                                0 => {
+                                    result.position[0] = Some(i32::from_str(arg)?);
+                                }
+                                1 => {
+                                    result.position[1] = Some(i32::from_str(arg)?);
+                                }
+                                2 => {
+                                    result.position[2] = Some(i32::from_str(arg)?);
+                                }
+                                3 => {
+                                    result.radius = Range::from(..i32::from_str(arg)?);
+                                }
+                                _ => return Err(Error::TooManyPositionalArgs),
                             }
                         }
                         positional_seen += 1;
@@ -295,38 +350,44 @@ impl<'a> From<&'a EntitySelector> for String {
                 args.push(format!("c={}", sel.count));
             }
         }
-        format!("@{}{}", sigil, if args.len() > 0 { format!("[{}]", args.join(',')) } else { "".to_string() })
+        format!(
+            "@{}{}",
+            sigil,
+            if args.is_empty() {
+                "".to_string()
+            } else {
+                format!("[{}]", args.join(','))
+            }
+        )
     }
 }
 
 #[cfg(test)]
 mod test {
+    use crate::util::Range;
     use std::default::Default;
     use std::str::FromStr;
-    use util::Range;
 
     use super::*;
 
     // Table driven tests
     struct TestCase<'a> {
         selector: EntitySelector,
-        string: &'a str
+        string: &'a str,
     }
 
     #[test]
     fn decode_selectors() {
-        let test_cases = vec![
-            TestCase {
-                string: "@e[0,64,0,80,type=Creeper,c=-4]",
-                selector: EntitySelector {
-                    position: [Some(0), Some(64), Some(0)],
-                    radius: Range::from(..80),
-                    entity_type: Attr::Is("Creeper".to_string()),
-                    count: -4,
-                    ..EntitySelector::default()
-                }
-            }
-        ];
+        let test_cases = vec![TestCase {
+            string: "@e[0,64,0,80,type=Creeper,c=-4]",
+            selector: EntitySelector {
+                position: [Some(0), Some(64), Some(0)],
+                radius: Range::from(..80),
+                entity_type: Attr::Is("Creeper".to_string()),
+                count: -4,
+                ..EntitySelector::default()
+            },
+        }];
         for TestCase { string, selector } in test_cases {
             assert_eq!(EntitySelector::from_str(string).unwrap(), selector);
         }
@@ -334,8 +395,11 @@ mod test {
 
     #[test]
     fn basic_selectors() {
-        for sel in vec!["@a", "@e", "@p", "@r"] {
-            assert_eq!(sel.to_string(), String::from(&EntitySelector::from_str(sel).unwrap()));
+        for sel in &["@a", "@e", "@p", "@r"] {
+            assert_eq!(
+                (*sel).to_string(),
+                String::from(&EntitySelector::from_str(sel).unwrap())
+            );
         }
     }
 }
