@@ -1,7 +1,7 @@
 mod arr;
 mod chat;
-pub mod consts;
 mod chunk;
+pub mod consts;
 mod entity_metadata;
 mod nbt;
 mod pos;

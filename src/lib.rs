@@ -1,19 +1,23 @@
-#![cfg_attr(test, deny(missing_docs, warnings))]
-#![forbid(unused_variables)]
-// #![feature(associated_type_defaults)]
-// #![feature(read_exact)]
+#![deny(
+    unused,
+    rust_2018_compatibility,
+    rust_2018_idioms,
+    future_incompatible,
+    nonstandard_style,
+    missing_debug_implementations
+)]
+#![warn(clippy::all, clippy::pedantic, missing_copy_implementations)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::identity_op
+)]
 
-extern crate byteorder;
-extern crate flate2;
 #[macro_use]
 extern crate log;
-pub extern crate nbt;
-extern crate num;
-extern crate rand;
-extern crate regex;
-extern crate rustc_serialize;
-extern crate time;
-extern crate uuid;
+pub use nbt;
 
 pub mod consts;
 pub mod packet;
